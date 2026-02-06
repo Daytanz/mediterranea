@@ -27,17 +27,19 @@ else:
         print("DB HOST IN USO: (Cannot parse host)")
 
 DATABASE_FILE = 'database.db' # Local SQLite fallback logic removed from get_db for clarity below
-UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 def get_db():
     if DATABASE_URL:
-        # PostgreSQL Connection
+        # PostgreSQL Connection - DIRECT PASS-THROUGH
         if 'db' not in g:
-            g.db = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+            # DEBUG: Print RAW connection string to check for hidden chars/spaces
+            try:
+                print("DATABASE_URL RAW:", repr(DATABASE_URL))
+            except:
+                pass
+            
+            # Use strip() to ensure no trailing newlines break the connection
+            g.db = psycopg2.connect(DATABASE_URL.strip(), cursor_factory=RealDictCursor)
         return g.db
     else:
         # SQLite Connection
@@ -108,7 +110,9 @@ def home():
 @app.route('/api/reset-admin-emergency', methods=['GET'])
 def reset_admin_emergency():
     try:
+        # Use get_db() to ensure we use the EXACT SAME connection logic as the rest of the app
         db = get_db()
+        
         # Hash for 'admin123' using scrypt explicitly to match werkzeug defaults
         # N=32768, r=8, p=1 are standard defaults in werkzeug's generate_password_hash
         password_hash = generate_password_hash('admin123', method='scrypt')
@@ -116,7 +120,7 @@ def reset_admin_emergency():
         status_msg = []
         
         if DATABASE_URL:
-            status_msg.append("Using PostgreSQL connection.")
+            status_msg.append("Using PostgreSQL connection via get_db()")
             cursor = db.cursor()
             
             # 1. DELETE existing admin to ensure clean slate
