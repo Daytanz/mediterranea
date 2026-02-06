@@ -1,5 +1,7 @@
 import axios from 'axios';
 
+// When deploying to Netlify/Vercel (Frontend only), we MUST provide the full Backend URL via env var.
+// If not provided, it falls back to localhost for local development.
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
 export const api = axios.create({

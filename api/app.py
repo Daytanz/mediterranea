@@ -11,7 +11,10 @@ import datetime
 app = Flask(__name__)
 CORS(app)
 
-DATABASE_URL = os.getenv('DATABASE_URL') # Supabase/Postgres URL
+# Fallback hardcoded URL for immediate Vercel deployment without env var config
+DEFAULT_DB_URL = "postgresql://postgres.wintsnrdxprcubqkniqz:TraeAI123!@aws-0-us-east-1.pooler.supabase.com:6543/postgres"
+DATABASE_URL = os.getenv('DATABASE_URL', DEFAULT_DB_URL)
+
 DATABASE_FILE = 'database.db' # Local SQLite
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
