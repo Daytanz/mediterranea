@@ -83,6 +83,17 @@ def allowed_file(filename):
 
 # --- Public API ---
 
+@app.route('/')
+def home():
+    return jsonify({
+        "status": "online",
+        "message": "Backend Pizzeria Mediterranea is running!",
+        "endpoints": {
+            "products": "/api/produtos",
+            "categories": "/api/categorias"
+        }
+    })
+
 @app.route('/api/categorias', methods=['GET'])
 def get_categorias():
     cats = query_db('SELECT * FROM categorias ORDER BY id')
