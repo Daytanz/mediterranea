@@ -9,8 +9,19 @@ from werkzeug.utils import secure_filename
 import datetime
 
 app = Flask(__name__)
-# Enable CORS for ALL domains to ensure Netlify/Vercel frontends can access this API without issues.
-CORS(app, resources={r"/*": {"origins": "*"}})
+# Fix CORS: Allow specific Netlify domain and localhost for dev
+# supports_credentials=True is crucial if we send cookies/auth headers
+# Allow headers Content-Type and Authorization explicitly
+CORS(app, resources={r"/api/*": {
+    "origins": [
+        "https://pizzeriamediterranea.netlify.app",
+        "http://localhost:5173",
+        "http://localhost:3000"
+    ],
+    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "allow_headers": ["Content-Type", "Authorization"],
+    "supports_credentials": True
+}})
 
 # Force strict DATABASE_URL usage from environment variables
 DATABASE_URL = os.environ.get("DATABASE_URL")
