@@ -10,8 +10,14 @@ import datetime
 
 # Allowed extensions for file uploads
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
+UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
 
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Ensure upload directory exists
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 # Fix CORS: Allow specific Netlify domain and localhost for dev
 # supports_credentials=True is crucial if we send cookies/auth headers
 # Allow headers Content-Type and Authorization explicitly
