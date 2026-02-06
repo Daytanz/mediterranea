@@ -34,16 +34,12 @@ export const getAdminProducts = async () => {
 };
 
 export const createAdminProduct = async (productData: FormData) => {
-  const response = await api.post('/admin/produtos', productData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const response = await api.post('/admin/produtos', productData);
   return response.data;
 };
 
 export const updateAdminProduct = async (id: number, productData: FormData) => {
-  const response = await api.put(`/admin/produtos/${id}`, productData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const response = await api.put(`/admin/produtos/${id}`, productData);
   return response.data;
 };
 
@@ -78,8 +74,6 @@ export const getCategories = async () => {
 };
 
 export const updateCategory = async (id: number, data: FormData) => {
-  const response = await api.put(`/admin/categorias/${id}`, data, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const response = await api.put(`/admin/categorias/${id}`, data);
   return response.data;
 };
