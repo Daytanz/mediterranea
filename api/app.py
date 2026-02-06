@@ -9,7 +9,8 @@ from werkzeug.utils import secure_filename
 import datetime
 
 app = Flask(__name__)
-CORS(app)
+# Enable CORS for ALL domains to ensure Netlify/Vercel frontends can access this API without issues.
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Fallback hardcoded URL for immediate Vercel deployment without env var config
 DEFAULT_DB_URL = "postgresql://postgres.wintsnrdxprcubqkniqz:TraeAI123!@aws-0-us-east-1.pooler.supabase.com:6543/postgres"
