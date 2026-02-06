@@ -8,6 +8,9 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 import datetime
 
+# Allowed extensions for file uploads
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
+
 app = Flask(__name__)
 # Fix CORS: Allow specific Netlify domain and localhost for dev
 # supports_credentials=True is crucial if we send cookies/auth headers
@@ -359,7 +362,10 @@ def admin_produtos():
             descricao = data.get('descricao')
             preco_inteiro = data.get('preco_inteiro')
             preco_meia = data.get('preco_meia')
-            ativo = data.get('ativo', 1)
+            # FIX: Ensure 'ativo' is a proper boolean for PostgreSQL
+            ativo_val = data.get('ativo', '1')
+            ativo = True if str(ativo_val).lower() in ['1', 'true', 'on'] else False
+            
             categoria_id = data.get('categoria_id')
             quantidade_estoque = data.get('quantidade_estoque')
             unidade = data.get('unidade')
