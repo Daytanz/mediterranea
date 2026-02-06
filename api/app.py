@@ -309,9 +309,12 @@ def update_categoria(id):
     params = [data.get('nome'), data.get('descricao')]
     
     if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        foto_url = f'/uploads/{filename}'
+        # Base64 handling for categories
+        file_bytes = file.read()
+        b64_string = base64.b64encode(file_bytes).decode('utf-8')
+        mime_type = file.content_type or 'image/jpeg'
+        foto_url = f"data:{mime_type};base64,{b64_string}"
+        
         foto_sql = ", foto_url = ?"
         params.append(foto_url)
         
@@ -490,6 +493,10 @@ def admin_dashboard():
         'today_orders': today_orders
     })
 
+import base64
+
+# ... existing code ...
+
 @app.route('/api/admin/produtos', methods=['GET', 'POST'])
 def admin_produtos():
     if request.method == 'GET':
@@ -504,17 +511,24 @@ def admin_produtos():
 
             data = request.form
             
-            # Safe file handling
+            # Base64 file handling for persistence on Render Free
             file = request.files.get('imagem') or request.files.get('foto')
             imagem = None
             
             if file and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
-                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                imagem = f'/uploads/{filename}'
+                # Read file bytes
+                file_bytes = file.read()
+                # Encode to base64
+                b64_string = base64.b64encode(file_bytes).decode('utf-8')
+                # Create data URI
+                # Determine mime type
+                mime_type = file.content_type or 'image/jpeg'
+                imagem = f"data:{mime_type};base64,{b64_string}"
             
             # Extract and CAST fields safely
             nome = data.get('nome')
+            # ... rest of the code is same, but 'imagem' is now a base64 string
+            # ... which fits into TEXT column nicely.
             descricao = data.get('descricao')
             
             try:
@@ -603,9 +617,12 @@ def admin_produto_detail(id):
                   categoria_id, quantidade_estoque, unidade]
         
         if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            foto_url = f'/uploads/{filename}'
+            # Base64 handling
+            file_bytes = file.read()
+            b64_string = base64.b64encode(file_bytes).decode('utf-8')
+            mime_type = file.content_type or 'image/jpeg'
+            foto_url = f"data:{mime_type};base64,{b64_string}"
+            
             foto_sql = ", foto_url = ?"
             params.append(foto_url)
             
