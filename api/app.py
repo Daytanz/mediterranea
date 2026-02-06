@@ -344,9 +344,9 @@ def admin_produtos():
 
             data = request.form
             
-            # Safe file handling - Frontend sends 'foto' (from previous context) or 'imagem' (from user input)
-            # We check both to be safe
-            file = request.files.get('foto') or request.files.get('imagem')
+            # Safe file handling - Frontend sends 'imagem' typically
+            # We check both to be safe and use safe extraction
+            file = request.files.get('imagem') or request.files.get('foto')
             foto_url = ''
             
             if file and allowed_file(file.filename):
