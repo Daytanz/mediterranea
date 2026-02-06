@@ -407,3 +407,4 @@ def uploaded_file(filename):
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)
 # Force Deploy Trigger Fri Feb  6 11:52:50 -03 2026
+# Force Deploy Trigger Fri Feb  6 11:53:04 -03 2026
