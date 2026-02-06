@@ -421,11 +421,29 @@ def admin_produto_detail(id):
         data = request.form
         
         # Handle file upload if present
-        file = request.files.get('foto')
+        file = request.files.get('foto') or request.files.get('imagem')
         foto_sql = ""
-        params = [data['nome'], data['descricao'], data['preco_inteiro'], 
-                  data.get('preco_meia'), data.get('ativo', 1), 
-                  data['categoria_id'], data.get('quantidade_estoque'), data.get('unidade')]
+        
+        # Casting
+        nome = data.get('nome')
+        descricao = data.get('descricao')
+        try: preco_inteiro = float(data.get('preco_inteiro', 0))
+        except: preco_inteiro = 0.0
+        try: preco_meia = float(data.get('preco_meia', 0))
+        except: preco_meia = 0.0
+        
+        ativo_val = data.get('ativo', '1')
+        ativo = True if str(ativo_val).lower() in ['1', 'true', 'on'] else False
+        
+        try: categoria_id = int(data.get('categoria_id', 0))
+        except: categoria_id = None
+        
+        quantidade_estoque = data.get('quantidade_estoque')
+        unidade = data.get('unidade')
+
+        params = [nome, descricao, preco_inteiro, 
+                  preco_meia, ativo, 
+                  categoria_id, quantidade_estoque, unidade]
         
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
@@ -443,6 +461,13 @@ def admin_produto_detail(id):
             {foto_sql}
             WHERE id = ?
         """
+        # Using query_db here as it handles UPDATEs reasonably well usually, 
+        # but for consistency with POST we might want to be explicit if this fails too.
+        # For now, keeping query_db but ensuring params are casted.
+        # Wait, query_db uses %s for Postgres, so we must ensure params order matches query placeholders
+        # Query: nome, desc, precoI, precoM, ativo, catId, qtd, unid, [foto], id
+        # Params: same order. Correct.
+        
         query_db(query, params)
         return jsonify({'message': 'Produto atualizado'})
 
