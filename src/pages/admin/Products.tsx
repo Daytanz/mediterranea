@@ -174,7 +174,7 @@ const Products: React.FC = () => {
                       <div className="font-bold text-zinc-800">{p.nome}</div>
                       <div className="text-xs text-zinc-400 max-w-[200px] truncate">{p.descricao}</div>
                     </td>
-                    <td className="p-4 font-medium text-zinc-600">R$ {p.preco_inteiro.toFixed(2)}</td>
+                    <td className="p-4 font-medium text-zinc-600">R$ {(Number(p.preco_inteiro || 0)).toFixed(2)}</td>
                     {activeTab !== '1' && (
                       <td className="p-4">
                         {p.quantidade_estoque !== null && p.quantidade_estoque !== undefined ? (

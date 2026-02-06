@@ -98,7 +98,7 @@ const Orders: React.FC = () => {
                 Cliente: {order.whatsapp_cliente}
               </div>
               <div className="font-bold text-xl text-red-600">
-                R$ {order.total.toFixed(2)}
+                R$ {(Number(order.total || 0)).toFixed(2)}
               </div>
             </div>
           </div>

@@ -222,7 +222,7 @@ const Cart: React.FC = () => {
                   </div>
 
                   <span className="font-medium text-terracotta min-w-[80px] text-right">
-                    R$ {(item.quantity * (item.type === 'inteira' ? item.product.preco_inteiro : (item.product.preco_meia || 0))).toFixed(2).replace('.', ',')}
+                    R$ {(item.quantity * (item.type === 'inteira' ? Number(item.product.preco_inteiro || 0) : (Number(item.product.preco_meia || 0)))).toFixed(2).replace('.', ',')}
                   </span>
                   
                   <button 

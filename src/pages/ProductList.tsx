@@ -94,7 +94,7 @@ const ProductList: React.FC = () => {
                   {product.nome}
                 </h3>
                 <span className="font-serif font-bold text-lg text-terracotta whitespace-nowrap ml-4">
-                  R$ {product.preco_inteiro.toFixed(2)}
+                  R$ {(Number(product.preco_inteiro || 0)).toFixed(2)}
                 </span>
               </div>
               
@@ -112,7 +112,7 @@ const ProductList: React.FC = () => {
                          className="flex-1 bg-white border-2 border-sand hover:border-olive/50 text-warm-grey hover:text-olive px-2 py-3 rounded-lg text-sm font-medium transition-all relative overflow-hidden group/btn flex flex-col items-center justify-center gap-1"
                        >
                          <span className="relative z-10 font-serif font-bold text-lg">Meia Pizza</span>
-                         <span className="relative z-10 text-sm text-terracotta font-bold">R$ {product.preco_meia?.toFixed(2).replace('.', ',')}</span>
+                         <span className="relative z-10 text-sm text-terracotta font-bold">R$ {(Number(product.preco_meia || 0)).toFixed(2).replace('.', ',')}</span>
                        </button>
                        
                        <button 
@@ -120,7 +120,7 @@ const ProductList: React.FC = () => {
                          className="flex-1 bg-terracotta text-white border-2 border-terracotta hover:bg-wine hover:border-wine px-2 py-3 rounded-lg text-sm font-medium transition-all flex flex-col items-center justify-center gap-1 shadow-sm hover:shadow-md"
                        >
                          <span className="font-serif font-bold text-lg">Pizza Inteira</span>
-                         <span className="text-sm text-white/90 font-bold">R$ {product.preco_inteiro.toFixed(2).replace('.', ',')}</span>
+                         <span className="text-sm text-white/90 font-bold">R$ {(Number(product.preco_inteiro || 0)).toFixed(2).replace('.', ',')}</span>
                        </button>
                      </div>
                    </div>
