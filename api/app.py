@@ -12,11 +12,21 @@ app = Flask(__name__)
 # Enable CORS for ALL domains to ensure Netlify/Vercel frontends can access this API without issues.
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Fallback hardcoded URL for immediate Vercel deployment without env var config
-DEFAULT_DB_URL = "postgresql://postgres.wintsnrdxprcubqkniqz:TraeAI123!@aws-0-us-east-1.pooler.supabase.com:6543/postgres"
-DATABASE_URL = os.getenv('DATABASE_URL', DEFAULT_DB_URL)
+# Force strict DATABASE_URL usage from environment variables
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
-DATABASE_FILE = 'database.db' # Local SQLite
+if not DATABASE_URL:
+    # On Render, this MUST be set. If missing, we want it to crash explicitly so we know.
+    # For local dev, you should have a .env file or set it manually.
+    print("WARNING: DATABASE_URL not set. App will likely fail if DB access is needed.")
+else:
+    # Print masked DB host for debugging (safe to log)
+    try:
+        print("DB HOST IN USO:", DATABASE_URL.split("@")[1])
+    except:
+        print("DB HOST IN USO: (Cannot parse host)")
+
+DATABASE_FILE = 'database.db' # Local SQLite fallback logic removed from get_db for clarity below
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
@@ -273,6 +283,8 @@ def admin_login():
             
         print(f"User found. Hash in DB starts with: {user['senha_hash'][:10]}...")
         
+        # Verify password using werkzeug's check_password_hash
+        # This handles the 'scrypt:...' format correctly
         if check_password_hash(user['senha_hash'], password):
             print("Password match!")
             return jsonify({'message': 'Login successful', 'token': 'dummy-token-for-demo', 'user': {'email': user['email']}})
