@@ -71,7 +71,7 @@ const ProductList: React.FC = () => {
             {/* Image Section */}
             <div className="h-56 relative overflow-hidden bg-sand">
                <img 
-                 src={product.foto_url.startsWith('http') ? product.foto_url : `http://localhost:5001${product.foto_url}`} 
+                 src={product.foto_url && product.foto_url.startsWith('http') ? product.foto_url : (product.foto_url ? `https://mediterranea.onrender.com${product.foto_url}` : 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80')} 
                  alt={product.nome} 
                  className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
                  onError={(e) => {

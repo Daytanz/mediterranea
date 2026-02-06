@@ -161,7 +161,7 @@ const Products: React.FC = () => {
                       <div className="w-12 h-12 rounded-lg bg-zinc-100 overflow-hidden relative">
                          {p.foto_url ? (
                            <img 
-                             src={p.foto_url.startsWith('http') ? p.foto_url : `http://localhost:5001${p.foto_url}`} 
+                             src={p.foto_url.startsWith('http') ? p.foto_url : `https://mediterranea.onrender.com${p.foto_url}`} 
                              alt={p.nome}
                              className="w-full h-full object-cover"
                            />
