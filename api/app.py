@@ -337,24 +337,42 @@ def admin_produtos():
         return jsonify([dict(p) for p in produtos])
     
     elif request.method == 'POST':
-        data = request.form
-        file = request.files.get('foto')
-        foto_url = ''
-        
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            foto_url = f'/uploads/{filename}'
-        
-        query_db("""
-            INSERT INTO produtos (nome, descricao, preco_inteiro, preco_meia, foto_url, ativo, categoria_id, quantidade_estoque, unidade)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            data['nome'], data['descricao'], data['preco_inteiro'], 
-            data.get('preco_meia'), foto_url, data.get('ativo', 1), 
-            data['categoria_id'], data.get('quantidade_estoque'), data.get('unidade')
-        ))
-        return jsonify({'message': 'Produto criado'}), 201
+        try:
+            # DEBUG LOGS
+            print("FORM DATA:", request.form)
+            print("FILES:", request.files)
+
+            data = request.form
+            file = request.files.get('foto') # Frontend field is 'foto' based on update_categoria, need to verify
+            foto_url = ''
+            
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                foto_url = f'/uploads/{filename}'
+            
+            # Extract fields safely
+            nome = data.get('nome')
+            descricao = data.get('descricao')
+            preco_inteiro = data.get('preco_inteiro')
+            preco_meia = data.get('preco_meia')
+            ativo = data.get('ativo', 1)
+            categoria_id = data.get('categoria_id')
+            quantidade_estoque = data.get('quantidade_estoque')
+            unidade = data.get('unidade')
+
+            query_db("""
+                INSERT INTO produtos (nome, descricao, preco_inteiro, preco_meia, foto_url, ativo, categoria_id, quantidade_estoque, unidade)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                nome, descricao, preco_inteiro, 
+                preco_meia, foto_url, ativo, 
+                categoria_id, quantidade_estoque, unidade
+            ))
+            return jsonify({'message': 'Produto criado'}), 201
+        except Exception as e:
+            print("ERRORE PRODUTO:", e)
+            return jsonify({'error': str(e)}), 500
 
 @app.route('/api/admin/produtos/<int:id>', methods=['PUT', 'DELETE'])
 def admin_produto_detail(id):
