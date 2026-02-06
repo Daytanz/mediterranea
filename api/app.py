@@ -12,6 +12,20 @@ import datetime
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
 
+# Force strict DATABASE_URL usage from environment variables
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+if not DATABASE_URL:
+    # On Render, this MUST be set. If missing, we want it to crash explicitly so we know.
+    # For local dev, you should have a .env file or set it manually.
+    print("WARNING: DATABASE_URL not set. App will likely fail if DB access is needed.")
+else:
+    # Print masked DB host for debugging (safe to log)
+    try:
+        print("DB HOST IN USO:", DATABASE_URL.split("@")[1])
+    except:
+        print("DB HOST IN USO: (Cannot parse host)")
+
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
@@ -128,20 +142,6 @@ CORS(app, resources={r"/api/*": {
     "allow_headers": ["Content-Type", "Authorization"],
     "supports_credentials": True
 }})
-
-# Force strict DATABASE_URL usage from environment variables
-DATABASE_URL = os.environ.get("DATABASE_URL")
-
-if not DATABASE_URL:
-    # On Render, this MUST be set. If missing, we want it to crash explicitly so we know.
-    # For local dev, you should have a .env file or set it manually.
-    print("WARNING: DATABASE_URL not set. App will likely fail if DB access is needed.")
-else:
-    # Print masked DB host for debugging (safe to log)
-    try:
-        print("DB HOST IN USO:", DATABASE_URL.split("@")[1])
-    except:
-        print("DB HOST IN USO: (Cannot parse host)")
 
 DATABASE_FILE = 'database.db' # Local SQLite fallback logic removed from get_db for clarity below
 
