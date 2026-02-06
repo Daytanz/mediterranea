@@ -208,11 +208,33 @@ def update_categoria(id):
 
 @app.route('/api/produtos', methods=['GET'])
 def get_produtos():
-    produtos = query_db('SELECT * FROM produtos WHERE ativo = TRUE OR ativo = 1')
-    result = []
-    for p in produtos:
-        result.append(dict(p))
-    return jsonify(result)
+    try:
+        # Postgres boolean check is strict. 'ativo' column is BOOLEAN.
+        # 'ativo = TRUE' works. 'ativo = 1' might fail if strictly boolean.
+        # Let's use a safe query that works for the boolean column type.
+        produtos = query_db('SELECT * FROM produtos WHERE ativo = true')
+        
+        result = []
+        for p in produtos:
+            # Convert RealDictRow to dict safely
+            p_dict = dict(p)
+            
+            # Ensure numeric fields are actually numbers (float) to avoid frontend crashes
+            if 'preco_inteiro' in p_dict:
+                try: p_dict['preco_inteiro'] = float(p_dict['preco_inteiro'])
+                except: p_dict['preco_inteiro'] = 0.0
+                
+            if 'preco_meia' in p_dict:
+                try: p_dict['preco_meia'] = float(p_dict['preco_meia']) if p_dict['preco_meia'] is not None else 0.0
+                except: p_dict['preco_meia'] = 0.0
+                
+            result.append(p_dict)
+            
+        return jsonify(result)
+    except Exception as e:
+        print("ERRORE GET /produtos:", repr(e))
+        # Return empty list instead of 500 to keep frontend alive
+        return jsonify([]), 200
 
 @app.route('/api/pedidos', methods=['POST'])
 def create_pedido():
