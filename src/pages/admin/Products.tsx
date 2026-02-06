@@ -3,6 +3,7 @@ import { getAdminProducts, createAdminProduct, updateAdminProduct, deleteAdminPr
 import { Product } from '../../store/useStore';
 import { Plus, Trash2, X, Edit2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import ImageWithFallback from '../../components/ImageWithFallback';
 
 const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -159,15 +160,11 @@ const Products: React.FC = () => {
                   <tr key={p.id} className="hover:bg-zinc-50/50 transition-colors">
                     <td className="p-4 w-20">
                       <div className="w-12 h-12 rounded-lg bg-zinc-100 overflow-hidden relative">
-                         {p.foto_url ? (
-                           <img 
-                             src={p.foto_url.startsWith('http') ? p.foto_url : `https://mediterranea.onrender.com${p.foto_url}`} 
-                             alt={p.nome}
-                             className="w-full h-full object-cover"
-                           />
-                         ) : (
-                           <div className="w-full h-full flex items-center justify-center text-zinc-300">Img</div>
-                         )}
+                         <ImageWithFallback 
+                           src={p.foto_url}
+                           alt={p.nome}
+                           className="w-full h-full object-cover"
+                         />
                       </div>
                     </td>
                     <td className="p-4">

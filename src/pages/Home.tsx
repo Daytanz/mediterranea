@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { ChevronRight } from 'lucide-react';
 import { getCategories } from '../lib/api';
+import ImageWithFallback from '../components/ImageWithFallback';
 
 interface Category {
   id: number;
@@ -66,14 +67,10 @@ const Home: React.FC = () => {
             <div className="absolute inset-0 bg-warm-black/20 group-hover:bg-warm-black/10 transition-colors z-10" />
             
             <div className="h-48 md:h-64 overflow-hidden bg-zinc-200">
-              <img 
-                src={cat.image && (cat.image.startsWith('http') || cat.image.startsWith('data:')) ? cat.image : (cat.image ? `https://mediterranea.onrender.com${cat.image}` : '')}
+              <ImageWithFallback 
+                src={cat.image}
                 alt={cat.name}
                 className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 ease-in-out"
-                onError={(e) => {
-                  // Fallback gradient if image fails
-                  (e.target as HTMLImageElement).style.opacity = '0';
-                }}
               />
             </div>
             

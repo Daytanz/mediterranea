@@ -5,6 +5,7 @@ import { getProducts } from '../lib/api';
 import { Product, useStore } from '../store/useStore';
 import { Plus, ArrowLeft } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import ImageWithFallback from '../components/ImageWithFallback';
 
 const ProductList: React.FC = () => {
   const { nome } = useParams<{ nome: string }>();
@@ -70,13 +71,11 @@ const ProductList: React.FC = () => {
           >
             {/* Image Section */}
             <div className="h-56 relative overflow-hidden bg-sand">
-               <img 
-                 src={product.foto_url && product.foto_url.startsWith('http') ? product.foto_url : (product.foto_url ? `https://mediterranea.onrender.com${product.foto_url}` : 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80')} 
-                 alt={product.nome} 
+               <ImageWithFallback 
+                 src={product.foto_url}
+                 alt={product.nome}
                  className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
-                 onError={(e) => {
-                   (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80';
-                 }}
+                 fallbackSrc="https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80"
                />
                <div className="absolute inset-0 bg-gradient-to-t from-warm-black/30 to-transparent opacity-60"></div>
                
