@@ -93,7 +93,7 @@ const Categories: React.FC = () => {
                         <div className="w-24 h-16 rounded-lg bg-zinc-100 overflow-hidden relative border border-zinc-200">
                           {previewUrl ? (
                             <img 
-                              src={previewUrl && previewUrl.startsWith('http') ? previewUrl : (previewUrl ? `https://mediterranea.onrender.com${previewUrl}` : '')} 
+                              src={previewUrl && (previewUrl.startsWith('http') || previewUrl.startsWith('data:')) ? previewUrl : (previewUrl ? `https://mediterranea.onrender.com${previewUrl}` : '')} 
                               alt="Preview" 
                               className="w-full h-full object-cover"
                             />
@@ -114,7 +114,7 @@ const Categories: React.FC = () => {
                       <div className="w-24 h-16 rounded-lg bg-zinc-100 overflow-hidden relative border border-zinc-200">
                         {cat.foto_url ? (
                           <img 
-                            src={cat.foto_url && cat.foto_url.startsWith('http') ? cat.foto_url : (cat.foto_url ? `https://mediterranea.onrender.com${cat.foto_url}` : '')} 
+                            src={cat.foto_url && (cat.foto_url.startsWith('http') || cat.foto_url.startsWith('data:')) ? cat.foto_url : (cat.foto_url ? `https://mediterranea.onrender.com${cat.foto_url}` : '')} 
                             alt={cat.nome}
                             className="w-full h-full object-cover"
                             onError={(e) => {
