@@ -18,6 +18,102 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Ensure upload directory exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+def init_db_schema():
+    """Ensure database tables exist with correct schema."""
+    if not DATABASE_URL:
+        return
+        
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        
+        # Admin table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS admin (
+                id SERIAL PRIMARY KEY,
+                email TEXT UNIQUE NOT NULL,
+                senha_hash TEXT NOT NULL
+            );
+        """)
+        
+        # Categories table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS categorias (
+                id SERIAL PRIMARY KEY,
+                nome TEXT NOT NULL,
+                descricao TEXT,
+                foto_url TEXT
+            );
+        """)
+        
+        # Products table - Explicitly using BOOLEAN for ativo
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS produtos (
+                id SERIAL PRIMARY KEY,
+                nome TEXT NOT NULL,
+                descricao TEXT,
+                preco_inteiro FLOAT NOT NULL,
+                preco_meia FLOAT,
+                foto_url TEXT,
+                ativo BOOLEAN DEFAULT TRUE,
+                categoria_id INTEGER,
+                quantidade_estoque INTEGER,
+                unidade TEXT
+            );
+        """)
+        
+        # Orders table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS pedidos (
+                id SERIAL PRIMARY KEY,
+                data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                total FLOAT NOT NULL,
+                status TEXT DEFAULT 'Recebido',
+                whatsapp_cliente TEXT,
+                mensagem_whatsapp TEXT
+            );
+        """)
+        
+        # Order items table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS itens_pedido (
+                id SERIAL PRIMARY KEY,
+                pedido_id INTEGER REFERENCES pedidos(id),
+                produto_id INTEGER,
+                tipo TEXT,
+                quantidade INTEGER,
+                preco_unitario FLOAT
+            );
+        """)
+        
+        # Half pizzas table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS meias_pizzas (
+                id SERIAL PRIMARY KEY,
+                item_pedido_id INTEGER REFERENCES itens_pedido(id),
+                sabor_meia TEXT
+            );
+        """)
+        
+        # Configs table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS configuracoes (
+                chave TEXT PRIMARY KEY,
+                valor TEXT
+            );
+        """)
+        
+        db.commit()
+        print("Database schema initialized successfully.")
+    except Exception as e:
+        print(f"Schema initialization error: {e}")
+        if 'db' in locals():
+            db.rollback()
+
+# Run schema init on startup
+with app.app_context():
+    init_db_schema()
+
 # Fix CORS: Allow specific Netlify domain and localhost for dev
 # supports_credentials=True is crucial if we send cookies/auth headers
 # Allow headers Content-Type and Authorization explicitly
@@ -125,6 +221,30 @@ def home():
             "products": "/api/produtos",
             "categories": "/api/categorias"
         }
+    })
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    db_status = "ok"
+    try:
+        query_db('SELECT 1')
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+        
+    fs_status = "ok"
+    try:
+        test_file = os.path.join(app.config['UPLOAD_FOLDER'], 'test_write.txt')
+        with open(test_file, 'w') as f:
+            f.write('ok')
+        os.remove(test_file)
+    except Exception as e:
+        fs_status = f"error: {str(e)}"
+        
+    return jsonify({
+        "status": "online",
+        "database": db_status,
+        "filesystem": fs_status,
+        "upload_folder": app.config['UPLOAD_FOLDER']
     })
 
 # --- EMERGENCY RESET ROUTE ---
