@@ -270,8 +270,12 @@ def create_pedido():
 @app.route('/api/admin/login', methods=['POST'])
 def admin_login():
     data = request.json
+    print("LOGIN PAYLOAD:", data) # Check what frontend sends
     email = data.get('email')
-    password = data.get('senha')
+    # Frontend sends 'senha', not 'password' or 'senha' key might be mapped to password variable
+    # Based on React code: adminLogin({ email, senha: password })
+    # So the JSON key is 'senha'
+    password = data.get('senha') 
     
     print(f"Login attempt for: {email}") # Log for Render
     
