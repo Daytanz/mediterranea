@@ -23,6 +23,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # Allow headers Content-Type and Authorization explicitly
 CORS(app, resources={r"/api/*": {
     "origins": [
+        "https://mediterranea-frontend.onrender.com",
         "https://pizzeriamediterranea.netlify.app",
         "http://localhost:5173",
         "http://localhost:3000"
