@@ -102,15 +102,28 @@ def reset_admin_emergency():
         # Hash for 'admin123'
         password_hash = generate_password_hash('admin123')
         
+        status_msg = []
+        
         if DATABASE_URL:
+            status_msg.append("Using PostgreSQL connection.")
             cursor = db.cursor()
+            
+            # Check if user exists before
+            cursor.execute("SELECT email FROM admin WHERE email = 'admin@mediterranea.com'")
+            exists = cursor.fetchone()
+            status_msg.append(f"User existed before: {exists}")
+
             # Delete existing
             cursor.execute("DELETE FROM admin WHERE email = 'admin@mediterranea.com'")
+            status_msg.append("Deleted old user.")
+            
             # Create new
             cursor.execute(
                 "INSERT INTO admin (email, senha_hash) VALUES (%s, %s)",
                 ('admin@mediterranea.com', password_hash)
             )
+            status_msg.append("Inserted new user with password 'admin123'.")
+            
             db.commit()
             cursor.close()
         else:
@@ -120,10 +133,15 @@ def reset_admin_emergency():
                 ('admin@mediterranea.com', password_hash)
             )
             db.commit()
+            status_msg.append("Using SQLite. Reset done.")
             
-        return jsonify({"message": "Admin reset successful. Login with admin@mediterranea.com / admin123"})
+        return jsonify({
+            "message": "Admin reset successful", 
+            "details": status_msg,
+            "login_info": "Email: admin@mediterranea.com | Pass: admin123"
+        })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e), "type": "Reset Failed"}), 500
 
 @app.route('/api/categorias', methods=['GET'])
 def get_categorias():
@@ -244,15 +262,27 @@ def admin_login():
     email = data.get('email')
     password = data.get('senha')
     
-    user = query_db('SELECT * FROM admin WHERE email = ?', (email,), one=True)
+    print(f"Login attempt for: {email}") # Log for Render
     
-    # Hash check (simple for demo, use proper scrypt in prod)
-    # Note: In a real migration, existing hashes might need re-hashing if algorithms differ, 
-    # but werkzeug handles standard formats well.
-    if user and check_password_hash(user['senha_hash'], password):
-        return jsonify({'message': 'Login successful', 'token': 'dummy-token-for-demo', 'user': {'email': user['email']}})
-    
-    return jsonify({'error': 'Invalid credentials'}), 401
+    try:
+        user = query_db('SELECT * FROM admin WHERE email = ?', (email,), one=True)
+        
+        if not user:
+            print("User not found in DB")
+            return jsonify({'error': 'User not found'}), 401
+            
+        print(f"User found. Hash in DB starts with: {user['senha_hash'][:10]}...")
+        
+        if check_password_hash(user['senha_hash'], password):
+            print("Password match!")
+            return jsonify({'message': 'Login successful', 'token': 'dummy-token-for-demo', 'user': {'email': user['email']}})
+        else:
+            print("Password mismatch")
+            return jsonify({'error': 'Invalid password'}), 401
+            
+    except Exception as e:
+        print(f"Login error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/admin/dashboard', methods=['GET'])
 def admin_dashboard():
