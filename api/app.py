@@ -109,8 +109,9 @@ def home():
 def reset_admin_emergency():
     try:
         db = get_db()
-        # Hash for 'admin123'
-        password_hash = generate_password_hash('admin123')
+        # Hash for 'admin123' using scrypt explicitly to match werkzeug defaults
+        # N=32768, r=8, p=1 are standard defaults in werkzeug's generate_password_hash
+        password_hash = generate_password_hash('admin123', method='scrypt')
         
         status_msg = []
         
@@ -118,18 +119,13 @@ def reset_admin_emergency():
             status_msg.append("Using PostgreSQL connection.")
             cursor = db.cursor()
             
-            # Check if user exists before
-            cursor.execute("SELECT email FROM admin WHERE email = 'admin@mediterranea.com'")
-            exists = cursor.fetchone()
-            status_msg.append(f"User existed before: {exists}")
-
-            # Delete existing
-            cursor.execute("DELETE FROM admin WHERE email = 'admin@mediterranea.com'")
+            # 1. DELETE existing admin to ensure clean slate
+            cursor.execute("DELETE FROM public.admin WHERE email = 'admin@mediterranea.com'")
             status_msg.append("Deleted old user.")
             
-            # Create new
+            # 2. INSERT new admin
             cursor.execute(
-                "INSERT INTO admin (email, senha_hash) VALUES (%s, %s)",
+                "INSERT INTO public.admin (email, senha_hash) VALUES (%s, %s)",
                 ('admin@mediterranea.com', password_hash)
             )
             status_msg.append("Inserted new user with password 'admin123'.")
@@ -137,6 +133,7 @@ def reset_admin_emergency():
             db.commit()
             cursor.close()
         else:
+            # Fallback for SQLite (local dev)
             db.execute("DELETE FROM admin WHERE email = 'admin@mediterranea.com'")
             db.execute(
                 "INSERT INTO admin (email, senha_hash) VALUES (?, ?)",
@@ -275,7 +272,11 @@ def admin_login():
     print(f"Login attempt for: {email}") # Log for Render
     
     try:
-        user = query_db('SELECT * FROM admin WHERE email = ?', (email,), one=True)
+        # 1. Fetch user using explicit schema 'public.admin'
+        user = query_db('SELECT * FROM public.admin WHERE email = ?', (email,), one=True)
+        
+        # 2. Log explicit result
+        print("ADMIN ROW:", dict(user) if user else "None")
         
         if not user:
             print("User not found in DB")
@@ -284,7 +285,6 @@ def admin_login():
         print(f"User found. Hash in DB starts with: {user['senha_hash'][:10]}...")
         
         # Verify password using werkzeug's check_password_hash
-        # This handles the 'scrypt:...' format correctly
         if check_password_hash(user['senha_hash'], password):
             print("Password match!")
             return jsonify({'message': 'Login successful', 'token': 'dummy-token-for-demo', 'user': {'email': user['email']}})
