@@ -94,6 +94,37 @@ def home():
         }
     })
 
+# --- EMERGENCY RESET ROUTE ---
+@app.route('/api/reset-admin-emergency', methods=['GET'])
+def reset_admin_emergency():
+    try:
+        db = get_db()
+        # Hash for 'admin123'
+        password_hash = generate_password_hash('admin123')
+        
+        if DATABASE_URL:
+            cursor = db.cursor()
+            # Delete existing
+            cursor.execute("DELETE FROM admin WHERE email = 'admin@mediterranea.com'")
+            # Create new
+            cursor.execute(
+                "INSERT INTO admin (email, senha_hash) VALUES (%s, %s)",
+                ('admin@mediterranea.com', password_hash)
+            )
+            db.commit()
+            cursor.close()
+        else:
+            db.execute("DELETE FROM admin WHERE email = 'admin@mediterranea.com'")
+            db.execute(
+                "INSERT INTO admin (email, senha_hash) VALUES (?, ?)",
+                ('admin@mediterranea.com', password_hash)
+            )
+            db.commit()
+            
+        return jsonify({"message": "Admin reset successful. Login with admin@mediterranea.com / admin123"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/categorias', methods=['GET'])
 def get_categorias():
     cats = query_db('SELECT * FROM categorias ORDER BY id')
