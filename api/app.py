@@ -338,12 +338,15 @@ def admin_produtos():
     
     elif request.method == 'POST':
         try:
-            # DEBUG LOGS
-            print("FORM DATA:", request.form)
+            # DEBUG LOGS - CRITICAL
+            print("FORM DATA:", dict(request.form))
             print("FILES:", request.files)
 
             data = request.form
-            file = request.files.get('foto') # Frontend field is 'foto' based on update_categoria, need to verify
+            
+            # Safe file handling - Frontend sends 'foto' (from previous context) or 'imagem' (from user input)
+            # We check both to be safe
+            file = request.files.get('foto') or request.files.get('imagem')
             foto_url = ''
             
             if file and allowed_file(file.filename):
@@ -351,7 +354,7 @@ def admin_produtos():
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
                 foto_url = f'/uploads/{filename}'
             
-            # Extract fields safely
+            # Extract fields safely from FORM (not JSON)
             nome = data.get('nome')
             descricao = data.get('descricao')
             preco_inteiro = data.get('preco_inteiro')
@@ -371,7 +374,7 @@ def admin_produtos():
             ))
             return jsonify({'message': 'Produto criado'}), 201
         except Exception as e:
-            print("ERRORE PRODUTO:", e)
+            print("ERRORE /produtos:", repr(e))
             return jsonify({'error': str(e)}), 500
 
 @app.route('/api/admin/produtos/<int:id>', methods=['PUT', 'DELETE'])
