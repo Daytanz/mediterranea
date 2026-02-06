@@ -341,46 +341,74 @@ def admin_produtos():
     
     elif request.method == 'POST':
         try:
-            # DEBUG LOGS - CRITICAL
+            # DEBUG LOGS
             print("FORM DATA:", dict(request.form))
             print("FILES:", request.files)
 
             data = request.form
             
-            # Safe file handling - Frontend sends 'imagem' typically
-            # We check both to be safe and use safe extraction
+            # Safe file handling
             file = request.files.get('imagem') or request.files.get('foto')
-            foto_url = ''
+            imagem = None
             
             if file and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                foto_url = f'/uploads/{filename}'
+                imagem = f'/uploads/{filename}'
             
-            # Extract fields safely from FORM (not JSON)
+            # Extract and CAST fields safely
             nome = data.get('nome')
             descricao = data.get('descricao')
-            preco_inteiro = data.get('preco_inteiro')
-            preco_meia = data.get('preco_meia')
-            # FIX: Ensure 'ativo' is a proper boolean for PostgreSQL
-            ativo_val = data.get('ativo', '1')
-            ativo = True if str(ativo_val).lower() in ['1', 'true', 'on'] else False
             
-            categoria_id = data.get('categoria_id')
-            quantidade_estoque = data.get('quantidade_estoque')
+            try:
+                preco_inteiro = float(data.get('preco_inteiro', 0))
+            except:
+                preco_inteiro = 0.0
+                
+            try:
+                preco_meia = float(data.get('preco_meia', 0))
+            except:
+                preco_meia = 0.0
+                
+            try:
+                categoria_id = int(data.get('categoria_id', 0))
+            except:
+                categoria_id = None
+                
             unidade = data.get('unidade')
+            
+            # Debug log requested
+            print("INSERT PRODUTO:", nome, preco_inteiro, preco_meia, categoria_id, imagem, unidade)
 
-            query_db("""
-                INSERT INTO produtos (nome, descricao, preco_inteiro, preco_meia, foto_url, ativo, categoria_id, quantidade_estoque, unidade)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            # Direct execution to ensure types are preserved (especially boolean)
+            db = get_db()
+            cursor = db.cursor()
+            
+            # Using foto_url instead of imagem for DB column to match schema, 
+            # but passing 'imagem' variable as requested.
+            # Using True for ativo as requested.
+            cursor.execute("""
+                INSERT INTO produtos 
+                (nome, descricao, preco_inteiro, preco_meia, foto_url, categoria_id, ativo, unidade) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """, (
-                nome, descricao, preco_inteiro, 
-                preco_meia, foto_url, ativo, 
-                categoria_id, quantidade_estoque, unidade
+                nome, 
+                descricao, 
+                preco_inteiro, 
+                preco_meia, 
+                imagem, 
+                categoria_id, 
+                True, 
+                unidade
             ))
+            
+            db.commit()
             return jsonify({'message': 'Produto criado'}), 201
+            
         except Exception as e:
             print("ERRORE /produtos:", repr(e))
+            if 'db' in locals():
+                db.rollback()
             return jsonify({'error': str(e)}), 500
 
 @app.route('/api/admin/produtos/<int:id>', methods=['PUT', 'DELETE'])
