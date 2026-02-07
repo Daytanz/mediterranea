@@ -690,8 +690,20 @@ def admin_config():
         return jsonify([dict(c) for c in configs])
     elif request.method == 'PUT':
         data = request.json
+        print("UPDATING CONFIGS:", data)
         for key, value in data.items():
-            query_db('UPDATE configuracoes SET valor = ? WHERE chave = ?', (value, key))
+            # Check if exists to perform UPSERT (Update or Insert)
+            # This ensures new settings are actually saved instead of ignored by UPDATE
+            exists = query_db('SELECT 1 FROM configuracoes WHERE chave = ?', (key,), one=True)
+            
+            # Ensure value is string
+            val_str = str(value)
+            
+            if exists:
+                query_db('UPDATE configuracoes SET valor = ? WHERE chave = ?', (val_str, key))
+            else:
+                query_db('INSERT INTO configuracoes (chave, valor) VALUES (?, ?)', (key, val_str))
+                
         return jsonify({'message': 'Configurações atualizadas'})
 
 @app.route('/uploads/<path:filename>')
