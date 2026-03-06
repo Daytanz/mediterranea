@@ -56,16 +56,22 @@ const Categories: React.FC = () => {
   };
 
   const handleSave = async (id: number) => {
-    const data = new FormData();
-    data.append('nome', formData.nome);
-    data.append('descricao', formData.descricao);
-    if (formData.foto) {
-      data.append('foto', formData.foto);
-    }
+    try {
+      const data = new FormData();
+      data.append('nome', formData.nome);
+      data.append('descricao', formData.descricao);
+      if (formData.foto) {
+        data.append('foto', formData.foto);
+      }
 
-    await updateCategory(id, data);
-    setEditingId(null);
-    fetchCategories();
+      await updateCategory(id, data);
+      setEditingId(null);
+      fetchCategories();
+      alert('Categoria atualizada com sucesso!');
+    } catch (error) {
+      console.error("Error updating category:", error);
+      alert("Erro ao atualizar categoria. Tente novamente.");
+    }
   };
 
   return (

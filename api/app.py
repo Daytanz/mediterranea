@@ -427,30 +427,46 @@ def get_categorias():
 
 @app.route('/api/admin/categorias/<int:id>', methods=['PUT'])
 def update_categoria(id):
-    data = request.form
-    file = request.files.get('foto')
-    
-    foto_sql = ""
-    params = [data.get('nome'), data.get('descricao')]
-    
-    if file and allowed_file(file.filename):
-        # SUPABASE UPLOAD
-        foto_url = upload_image_to_supabase(file)
+    try:
+        print(f"UPDATING CATEGORY {id}...")
+        data = request.form
+        file = request.files.get('foto')
         
-        if foto_url:
-            foto_sql = ", foto_url = ?"
-            params.append(foto_url)
+        foto_sql = ""
+        # Handle cases where nome/descricao might be None if not sent (though frontend sends them)
+        # We should fetch current values if missing, or assume frontend sends all.
+        # Frontend Categories.tsx sends 'nome' and 'descricao' always.
+        nome = data.get('nome')
+        descricao = data.get('descricao')
         
-    params.append(id)
-    
-    query = f"""
-        UPDATE categorias SET 
-        nome = ?, descricao = ?
-        {foto_sql}
-        WHERE id = ?
-    """
-    query_db(query, params)
-    return jsonify({'message': 'Categoria atualizada'})
+        params = [nome, descricao]
+        
+        if file and allowed_file(file.filename):
+            print(f"Uploading category image {file.filename} to Supabase...")
+            # SUPABASE UPLOAD
+            foto_url = upload_image_to_supabase(file)
+            
+            if foto_url:
+                foto_sql = ", foto_url = ?"
+                params.append(foto_url)
+                print(f"Category image updated: {foto_url}")
+            else:
+                print("Supabase upload failed for category")
+        
+        params.append(id)
+        
+        query = f"""
+            UPDATE categorias SET 
+            nome = ?, descricao = ?
+            {foto_sql}
+            WHERE id = ?
+        """
+        query_db(query, params)
+        print("Category updated successfully")
+        return jsonify({'message': 'Categoria atualizada'})
+    except Exception as e:
+        print(f"ERROR UPDATING CATEGORY {id}: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/produtos', methods=['GET'])
 def get_produtos():
