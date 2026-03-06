@@ -562,6 +562,40 @@ def create_pedido():
         db.rollback()
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/fix-db-column', methods=['GET'])
+def fix_db_column():
+    try:
+        if DATABASE_URL:
+            db = get_db()
+            cursor = db.cursor()
+            
+            # Alter produtos table
+            try:
+                print("Altering produtos.foto_url to TEXT...")
+                cursor.execute("ALTER TABLE produtos ALTER COLUMN foto_url TYPE TEXT;")
+                db.commit()
+                print("produtos.foto_url altered successfully.")
+            except Exception as e:
+                db.rollback()
+                print(f"Error altering produtos: {e}")
+
+            # Alter categorias table (just in case)
+            try:
+                print("Altering categorias.foto_url to TEXT...")
+                cursor.execute("ALTER TABLE categorias ALTER COLUMN foto_url TYPE TEXT;")
+                db.commit()
+                print("categorias.foto_url altered successfully.")
+            except Exception as e:
+                db.rollback()
+                print(f"Error altering categorias: {e}")
+                
+            cursor.close()
+            return jsonify({"message": "Database columns altered to TEXT successfully"}), 200
+        else:
+            return jsonify({"message": "Not using PostgreSQL, skipping."}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # --- Admin API ---
 
 @app.route('/api/admin/login', methods=['POST'])
