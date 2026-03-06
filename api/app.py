@@ -7,6 +7,8 @@ from flask_cors import CORS
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 import datetime
+from uuid import uuid4
+from supabase import create_client, Client
 
 # Allowed extensions for file uploads
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
@@ -14,6 +16,16 @@ UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
 
 # Force strict DATABASE_URL usage from environment variables
 DATABASE_URL = os.environ.get("DATABASE_URL")
+SUPABASE_URL = os.environ.get("SUPABASE_URL") or "https://wintsnrdxprcubqkniqz.supabase.co"
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
+
+supabase: Client = None
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        print("Supabase Storage Client Initialized")
+    except Exception as e:
+        print(f"Failed to init Supabase client: {e}")
 
 if not DATABASE_URL:
     # On Render, this MUST be set. If missing, we want it to crash explicitly so we know.
@@ -249,6 +261,48 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def upload_image_to_supabase(file):
+    """
+    Uploads a file to Supabase Storage and returns the public URL.
+    """
+    if not supabase:
+        print("Supabase client not initialized")
+        return None
+        
+    try:
+        # Generate unique filename
+        ext = file.filename.rsplit('.', 1)[1].lower()
+        filename = f"{uuid4().hex}.{ext}"
+        bucket_name = "Mediterranea"
+        
+        print(f"Uploading to Supabase: {filename}")
+        
+        # Read file content
+        file_content = file.read()
+        
+        # Upload to Supabase
+        # 'file_options' content-type is automatically detected or can be set
+        # Supabase python client uses 'upload' method
+        res = supabase.storage.from_(bucket_name).upload(
+            path=filename,
+            file=file_content,
+            file_options={"content-type": file.content_type}
+        )
+        
+        # Get Public URL
+        # Construct manually or use get_public_url if available in version
+        # Format: https://project.supabase.co/storage/v1/object/public/bucket/file
+        public_url = f"{SUPABASE_URL}/storage/v1/object/public/{bucket_name}/{filename}"
+        
+        print(f"Upload success. Public URL: {public_url}")
+        return public_url
+        
+    except Exception as e:
+        print(f"Supabase Upload Error: {e}")
+        # Reset file pointer if we need to retry or fallback (not implemented here)
+        file.seek(0) 
+        return None
+
 # --- Public API ---
 
 @app.route('/')
@@ -380,14 +434,12 @@ def update_categoria(id):
     params = [data.get('nome'), data.get('descricao')]
     
     if file and allowed_file(file.filename):
-        # Base64 handling for categories
-        file_bytes = file.read()
-        b64_string = base64.b64encode(file_bytes).decode('utf-8')
-        mime_type = file.content_type or 'image/jpeg'
-        foto_url = f"data:{mime_type};base64,{b64_string}"
+        # SUPABASE UPLOAD
+        foto_url = upload_image_to_supabase(file)
         
-        foto_sql = ", foto_url = ?"
-        params.append(foto_url)
+        if foto_url:
+            foto_sql = ", foto_url = ?"
+            params.append(foto_url)
         
     params.append(id)
     
@@ -588,13 +640,20 @@ def admin_produtos():
             
             if file and allowed_file(file.filename):
                 # Read file bytes
-                file_bytes = file.read()
+                # file_bytes = file.read()
                 # Encode to base64
-                b64_string = base64.b64encode(file_bytes).decode('utf-8')
+                # b64_string = base64.b64encode(file_bytes).decode('utf-8')
                 # Create data URI
                 # Determine mime type
-                mime_type = file.content_type or 'image/jpeg'
-                imagem = f"data:{mime_type};base64,{b64_string}"
+                # mime_type = file.content_type or 'image/jpeg'
+                # imagem = f"data:{mime_type};base64,{b64_string}"
+                
+                # SUPABASE UPLOAD
+                print(f"Uploading file {file.filename} to Supabase...")
+                imagem = upload_image_to_supabase(file)
+                
+                if not imagem:
+                    raise Exception("Failed to upload image to Supabase")
             
             # Extract and CAST fields safely
             nome = data.get('nome')
@@ -695,15 +754,17 @@ def admin_produto_detail(id):
             
             if file and allowed_file(file.filename):
                 print(f"Processing image update for product {id}...")
-                # Base64 handling
-                file_bytes = file.read()
-                b64_string = base64.b64encode(file_bytes).decode('utf-8')
-                mime_type = file.content_type or 'image/jpeg'
-                foto_url = f"data:{mime_type};base64,{b64_string}"
                 
-                foto_sql = ", foto_url = ?"
-                params.append(foto_url)
-                print("Image processed successfully.")
+                # SUPABASE UPLOAD
+                foto_url = upload_image_to_supabase(file)
+                
+                if foto_url:
+                    foto_sql = ", foto_url = ?"
+                    params.append(foto_url)
+                    print(f"Image processed successfully: {foto_url}")
+                else:
+                    print("Supabase upload failed.")
+                    # Optionally raise error or skip image update
             else:
                 print("No image file provided or invalid extension. Keeping existing image.")
                 
