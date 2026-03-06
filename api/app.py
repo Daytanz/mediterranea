@@ -36,14 +36,22 @@ DATABASE_FILE = 'database.db'
 
 def get_db():
     if DATABASE_URL:
-        # PostgreSQL Connection - NEW CONNECTION PER REQUEST
-        # We do NOT store in g.db anymore for Postgres to avoid stale connections
-        try:
-            conn = psycopg2.connect(DATABASE_URL.strip(), cursor_factory=RealDictCursor)
-            return conn
-        except Exception as e:
-            print(f"DB CONNECTION ERROR: {e}")
-            raise e
+        # PostgreSQL Connection - Request Scope (cache in g)
+        if 'db' not in g:
+            try:
+                # Create new connection
+                g.db = psycopg2.connect(DATABASE_URL.strip(), cursor_factory=RealDictCursor)
+                
+                # Proactive check (optional but recommended for poolers)
+                # Ensure connection is alive immediately
+                with g.db.cursor() as cur:
+                    cur.execute('SELECT 1')
+            except Exception as e:
+                print(f"DB CONNECTION ERROR: {e}")
+                # Don't cache broken connection
+                g.pop('db', None) 
+                raise e
+        return g.db
     else:
         # SQLite Connection (Local Dev)
         db = getattr(g, '_database', None)
@@ -54,20 +62,28 @@ def get_db():
 
 @app.teardown_appcontext
 def close_connection(exception):
-    # For SQLite only. Postgres connections are closed immediately after query in query_db
-    if not DATABASE_URL:
+    # Close both Postgres and SQLite connections at end of request
+    if DATABASE_URL:
+        db = g.pop('db', None)
+        if db is not None:
+            try:
+                db.close()
+            except:
+                pass
+    else:
         db = getattr(g, '_database', None)
         if db is not None:
             db.close()
 
 def query_db(query, args=(), one=False):
-    # Get a fresh connection
+    # Get connection (either new or cached for this request)
     try:
         db = get_db()
     except Exception as e:
-        # If DB is unreachable, return None or handle gracefully
+        # If DB is completely down, log and re-raise or return error structure
+        # Re-raising allows the caller (route) to handle 500 or specific logic
         print(f"Query aborted, DB unreachable: {e}")
-        return None
+        raise e
 
     if DATABASE_URL:
         # PostgreSQL Adapter
@@ -80,17 +96,18 @@ def query_db(query, args=(), one=False):
             if query.strip().upper().startswith('SELECT'):
                 rv = cursor.fetchall()
                 cursor.close()
-                db.close() # CLOSE CONNECTION IMMEDIATELY
+                # DO NOT CLOSE DB HERE - Wait for teardown_appcontext
                 return (rv[0] if rv else None) if one else rv
             else:
                 db.commit()
                 last_id = cursor.lastrowid if hasattr(cursor, 'lastrowid') else None
                 cursor.close()
-                db.close() # CLOSE CONNECTION IMMEDIATELY
+                # DO NOT CLOSE DB HERE - Wait for teardown_appcontext
                 return last_id
         except Exception as e:
             print(f"Query Error: {e}")
-            try: db.close()
+            # If query fails, we might want to rollback current transaction
+            try: db.rollback()
             except: pass
             raise e
     else:
@@ -252,19 +269,31 @@ def health_check():
         # Use a simpler check that doesn't rely on helper functions if possible
         # or wrap query_db in a very safe try/except
         if DATABASE_URL:
-            # Manual simple check with explicit close
-            try:
-                conn = psycopg2.connect(DATABASE_URL.strip())
-                cur = conn.cursor()
+            # Check connection using get_db (which uses request caching)
+            # but ensure we handle exception
+            db = get_db()
+            with db.cursor() as cur:
                 cur.execute('SELECT 1')
-                cur.close()
-                conn.close()
-            except Exception as e:
-                db_status = f"error: {str(e)}"
         else:
             query_db('SELECT 1')
     except Exception as e:
         db_status = f"error: {str(e)}"
+        
+    fs_status = "ok"
+    try:
+        test_file = os.path.join(app.config['UPLOAD_FOLDER'], 'test_write.txt')
+        with open(test_file, 'w') as f:
+            f.write('ok')
+        os.remove(test_file)
+    except Exception as e:
+        fs_status = f"error: {str(e)}"
+        
+    return jsonify({
+        "status": "online",
+        "database": db_status,
+        "filesystem": fs_status,
+        "upload_folder": app.config['UPLOAD_FOLDER']
+    })
         
     fs_status = "ok"
     try:
