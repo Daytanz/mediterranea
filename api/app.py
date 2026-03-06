@@ -181,9 +181,11 @@ def init_db_schema():
         """)
 
         # Ensure default admin exists
-        cursor.execute("SELECT COUNT(*) as count FROM public.admin")
+        cursor.execute("SELECT COUNT(*) FROM public.admin")
         res = cursor.fetchone()
-        if res and res['count'] == 0:
+        count = list(res.values())[0] if res else 0
+
+        if count == 0:
             print("Creating default admin user...")
             password_hash = generate_password_hash('admin123', method='scrypt')
             cursor.execute(
