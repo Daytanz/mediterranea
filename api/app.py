@@ -32,6 +32,69 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Ensure upload directory exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+DATABASE_FILE = 'database.db'
+
+def get_db():
+    if DATABASE_URL:
+        # PostgreSQL Connection - DIRECT PASS-THROUGH
+        if 'db' not in g:
+            # DEBUG: Print RAW connection string to check for hidden chars/spaces
+            try:
+                print("DATABASE_URL RAW:", repr(DATABASE_URL))
+            except:
+                pass
+            
+            # Use strip() to ensure no trailing newlines break the connection
+            g.db = psycopg2.connect(DATABASE_URL.strip(), cursor_factory=RealDictCursor)
+        return g.db
+    else:
+        # SQLite Connection
+        db = getattr(g, '_database', None)
+        if db is None:
+            db = g._database = sqlite3.connect(DATABASE_FILE)
+            db.row_factory = sqlite3.Row
+        return db
+
+@app.teardown_appcontext
+def close_connection(exception):
+    if DATABASE_URL:
+        db = g.pop('db', None)
+        if db is not None:
+            db.close()
+    else:
+        db = getattr(g, '_database', None)
+        if db is not None:
+            db.close()
+
+def query_db(query, args=(), one=False):
+    db = get_db()
+    
+    if DATABASE_URL:
+        # PostgreSQL Adapter
+        # Replace ? with %s for Postgres compatibility
+        pg_query = query.replace('?', '%s')
+        cursor = db.cursor()
+        cursor.execute(pg_query, args)
+        if query.strip().upper().startswith('SELECT'):
+            rv = cursor.fetchall()
+            cursor.close()
+            return (rv[0] if rv else None) if one else rv
+        else:
+            db.commit()
+            last_id = cursor.lastrowid if hasattr(cursor, 'lastrowid') else None
+            cursor.close()
+            return last_id
+    else:
+        # SQLite Adapter
+        cur = db.execute(query, args)
+        if query.strip().upper().startswith('SELECT'):
+            rv = cur.fetchall()
+            cur.close()
+            return (rv[0] if rv else None) if one else rv
+        else:
+            db.commit()
+            return cur.lastrowid
+
 def init_db_schema():
     """Ensure database tables exist with correct schema."""
     if not DATABASE_URL:
@@ -153,69 +216,6 @@ CORS(app, resources={r"/api/*": {
     "allow_headers": ["Content-Type", "Authorization"],
     "supports_credentials": True
 }})
-
-DATABASE_FILE = 'database.db' # Local SQLite fallback logic removed from get_db for clarity below
-
-def get_db():
-    if DATABASE_URL:
-        # PostgreSQL Connection - DIRECT PASS-THROUGH
-        if 'db' not in g:
-            # DEBUG: Print RAW connection string to check for hidden chars/spaces
-            try:
-                print("DATABASE_URL RAW:", repr(DATABASE_URL))
-            except:
-                pass
-            
-            # Use strip() to ensure no trailing newlines break the connection
-            g.db = psycopg2.connect(DATABASE_URL.strip(), cursor_factory=RealDictCursor)
-        return g.db
-    else:
-        # SQLite Connection
-        db = getattr(g, '_database', None)
-        if db is None:
-            db = g._database = sqlite3.connect(DATABASE_FILE)
-            db.row_factory = sqlite3.Row
-        return db
-
-@app.teardown_appcontext
-def close_connection(exception):
-    if DATABASE_URL:
-        db = g.pop('db', None)
-        if db is not None:
-            db.close()
-    else:
-        db = getattr(g, '_database', None)
-        if db is not None:
-            db.close()
-
-def query_db(query, args=(), one=False):
-    db = get_db()
-    
-    if DATABASE_URL:
-        # PostgreSQL Adapter
-        # Replace ? with %s for Postgres compatibility
-        pg_query = query.replace('?', '%s')
-        cursor = db.cursor()
-        cursor.execute(pg_query, args)
-        if query.strip().upper().startswith('SELECT'):
-            rv = cursor.fetchall()
-            cursor.close()
-            return (rv[0] if rv else None) if one else rv
-        else:
-            db.commit()
-            last_id = cursor.lastrowid if hasattr(cursor, 'lastrowid') else None
-            cursor.close()
-            return last_id
-    else:
-        # SQLite Adapter
-        cur = db.execute(query, args)
-        if query.strip().upper().startswith('SELECT'):
-            rv = cur.fetchall()
-            cur.close()
-            return (rv[0] if rv else None) if one else rv
-        else:
-            db.commit()
-            return cur.lastrowid
 
 def allowed_file(filename):
     return '.' in filename and \
