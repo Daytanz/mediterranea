@@ -76,18 +76,24 @@ const Products: React.FC = () => {
     data.append('preco_inteiro', formData.preco_inteiro);
     if (formData.preco_meia) data.append('preco_meia', formData.preco_meia);
     data.append('categoria_id', formData.categoria_id);
-    if (formData.foto) data.append('foto', formData.foto);
+    if (formData.foto) {
+        data.append('foto', formData.foto);
+    }
     if (formData.quantidade_estoque) data.append('quantidade_estoque', formData.quantidade_estoque);
     data.append('unidade', formData.unidade);
 
-    if (editingProduct) {
-      await updateAdminProduct(editingProduct.id, data);
-    } else {
-      await createAdminProduct(data);
+    try {
+        if (editingProduct) {
+            await updateAdminProduct(editingProduct.id, data);
+        } else {
+            await createAdminProduct(data);
+        }
+        setIsModalOpen(false);
+        fetchProducts();
+    } catch (error) {
+        console.error("Error saving product:", error);
+        alert("Erro ao salvar produto. Verifique o console.");
     }
-    
-    setIsModalOpen(false);
-    fetchProducts();
   };
 
   const filteredProducts = products.filter(p => p.categoria_id === parseInt(activeTab));

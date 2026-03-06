@@ -39,6 +39,9 @@ export const createAdminProduct = async (productData: FormData) => {
 };
 
 export const updateAdminProduct = async (id: number, productData: FormData) => {
+  // Explicitly do NOT set Content-Type header here.
+  // Axios/Browser will automatically set 'multipart/form-data; boundary=...'
+  // when the body is a FormData object.
   const response = await api.put(`/admin/produtos/${id}`, productData);
   return response.data;
 };
