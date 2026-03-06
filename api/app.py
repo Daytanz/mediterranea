@@ -36,19 +36,16 @@ DATABASE_FILE = 'database.db'
 
 def get_db():
     if DATABASE_URL:
-        # PostgreSQL Connection - DIRECT PASS-THROUGH
-        if 'db' not in g:
-            # DEBUG: Print RAW connection string to check for hidden chars/spaces
-            try:
-                print("DATABASE_URL RAW:", repr(DATABASE_URL))
-            except:
-                pass
-            
-            # Use strip() to ensure no trailing newlines break the connection
-            g.db = psycopg2.connect(DATABASE_URL.strip(), cursor_factory=RealDictCursor)
-        return g.db
+        # PostgreSQL Connection - NEW CONNECTION PER REQUEST
+        # We do NOT store in g.db anymore for Postgres to avoid stale connections
+        try:
+            conn = psycopg2.connect(DATABASE_URL.strip(), cursor_factory=RealDictCursor)
+            return conn
+        except Exception as e:
+            print(f"DB CONNECTION ERROR: {e}")
+            raise e
     else:
-        # SQLite Connection
+        # SQLite Connection (Local Dev)
         db = getattr(g, '_database', None)
         if db is None:
             db = g._database = sqlite3.connect(DATABASE_FILE)
@@ -57,33 +54,45 @@ def get_db():
 
 @app.teardown_appcontext
 def close_connection(exception):
-    if DATABASE_URL:
-        db = g.pop('db', None)
-        if db is not None:
-            db.close()
-    else:
+    # For SQLite only. Postgres connections are closed immediately after query in query_db
+    if not DATABASE_URL:
         db = getattr(g, '_database', None)
         if db is not None:
             db.close()
 
 def query_db(query, args=(), one=False):
-    db = get_db()
-    
+    # Get a fresh connection
+    try:
+        db = get_db()
+    except Exception as e:
+        # If DB is unreachable, return None or handle gracefully
+        print(f"Query aborted, DB unreachable: {e}")
+        return None
+
     if DATABASE_URL:
         # PostgreSQL Adapter
-        # Replace ? with %s for Postgres compatibility
-        pg_query = query.replace('?', '%s')
-        cursor = db.cursor()
-        cursor.execute(pg_query, args)
-        if query.strip().upper().startswith('SELECT'):
-            rv = cursor.fetchall()
-            cursor.close()
-            return (rv[0] if rv else None) if one else rv
-        else:
-            db.commit()
-            last_id = cursor.lastrowid if hasattr(cursor, 'lastrowid') else None
-            cursor.close()
-            return last_id
+        try:
+            # Replace ? with %s for Postgres compatibility
+            pg_query = query.replace('?', '%s')
+            cursor = db.cursor()
+            cursor.execute(pg_query, args)
+            
+            if query.strip().upper().startswith('SELECT'):
+                rv = cursor.fetchall()
+                cursor.close()
+                db.close() # CLOSE CONNECTION IMMEDIATELY
+                return (rv[0] if rv else None) if one else rv
+            else:
+                db.commit()
+                last_id = cursor.lastrowid if hasattr(cursor, 'lastrowid') else None
+                cursor.close()
+                db.close() # CLOSE CONNECTION IMMEDIATELY
+                return last_id
+        except Exception as e:
+            print(f"Query Error: {e}")
+            try: db.close()
+            except: pass
+            raise e
     else:
         # SQLite Adapter
         cur = db.execute(query, args)
@@ -243,12 +252,15 @@ def health_check():
         # Use a simpler check that doesn't rely on helper functions if possible
         # or wrap query_db in a very safe try/except
         if DATABASE_URL:
-            # Manual simple check
-            conn = psycopg2.connect(DATABASE_URL.strip())
-            cur = conn.cursor()
-            cur.execute('SELECT 1')
-            cur.close()
-            conn.close()
+            # Manual simple check with explicit close
+            try:
+                conn = psycopg2.connect(DATABASE_URL.strip())
+                cur = conn.cursor()
+                cur.execute('SELECT 1')
+                cur.close()
+                conn.close()
+            except Exception as e:
+                db_status = f"error: {str(e)}"
         else:
             query_db('SELECT 1')
     except Exception as e:
