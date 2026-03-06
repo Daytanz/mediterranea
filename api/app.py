@@ -660,61 +660,70 @@ def admin_produto_detail(id):
         return jsonify({'message': 'Produto deletado'})
     
     elif request.method == 'PUT':
-        data = request.form
-        
-        # Handle file upload if present
-        file = request.files.get('foto') or request.files.get('imagem')
-        foto_sql = ""
-        
-        # Casting
-        nome = data.get('nome')
-        descricao = data.get('descricao')
-        try: preco_inteiro = float(data.get('preco_inteiro', 0))
-        except: preco_inteiro = 0.0
-        try: preco_meia = float(data.get('preco_meia', 0))
-        except: preco_meia = 0.0
-        
-        ativo_val = data.get('ativo', '1')
-        ativo = True if str(ativo_val).lower() in ['1', 'true', 'on'] else False
-        
-        try: categoria_id = int(data.get('categoria_id', 0))
-        except: categoria_id = None
-        
-        quantidade_estoque = data.get('quantidade_estoque')
-        unidade = data.get('unidade')
+        try:
+            # DEBUG LOGS
+            print("PUT UPDATE PRODUTO:", id)
+            print("FORM DATA:", dict(request.form))
+            print("FILES:", request.files)
 
-        params = [nome, descricao, preco_inteiro, 
-                  preco_meia, ativo, 
-                  categoria_id, quantidade_estoque, unidade]
-        
-        if file and allowed_file(file.filename):
-            # Base64 handling
-            file_bytes = file.read()
-            b64_string = base64.b64encode(file_bytes).decode('utf-8')
-            mime_type = file.content_type or 'image/jpeg'
-            foto_url = f"data:{mime_type};base64,{b64_string}"
+            data = request.form
             
-            foto_sql = ", foto_url = ?"
-            params.append(foto_url)
+            # Handle file upload if present
+            file = request.files.get('foto') or request.files.get('imagem')
+            foto_sql = ""
             
-        params.append(id)
-        
-        query = f"""
-            UPDATE produtos SET 
-            nome = ?, descricao = ?, preco_inteiro = ?, preco_meia = ?, 
-            ativo = ?, categoria_id = ?, quantidade_estoque = ?, unidade = ?
-            {foto_sql}
-            WHERE id = ?
-        """
-        # Using query_db here as it handles UPDATEs reasonably well usually, 
-        # but for consistency with POST we might want to be explicit if this fails too.
-        # For now, keeping query_db but ensuring params are casted.
-        # Wait, query_db uses %s for Postgres, so we must ensure params order matches query placeholders
-        # Query: nome, desc, precoI, precoM, ativo, catId, qtd, unid, [foto], id
-        # Params: same order. Correct.
-        
-        query_db(query, params)
-        return jsonify({'message': 'Produto atualizado'})
+            # Casting
+            nome = data.get('nome')
+            descricao = data.get('descricao')
+            try: preco_inteiro = float(data.get('preco_inteiro', 0))
+            except: preco_inteiro = 0.0
+            try: preco_meia = float(data.get('preco_meia', 0))
+            except: preco_meia = 0.0
+            
+            ativo_val = data.get('ativo', '1')
+            ativo = True if str(ativo_val).lower() in ['1', 'true', 'on'] else False
+            
+            try: categoria_id = int(data.get('categoria_id', 0))
+            except: categoria_id = None
+            
+            quantidade_estoque = data.get('quantidade_estoque')
+            unidade = data.get('unidade')
+
+            params = [nome, descricao, preco_inteiro, 
+                      preco_meia, ativo, 
+                      categoria_id, quantidade_estoque, unidade]
+            
+            if file and allowed_file(file.filename):
+                print(f"Processing image update for product {id}...")
+                # Base64 handling
+                file_bytes = file.read()
+                b64_string = base64.b64encode(file_bytes).decode('utf-8')
+                mime_type = file.content_type or 'image/jpeg'
+                foto_url = f"data:{mime_type};base64,{b64_string}"
+                
+                foto_sql = ", foto_url = ?"
+                params.append(foto_url)
+                print("Image processed successfully.")
+            else:
+                print("No image file provided or invalid extension. Keeping existing image.")
+                
+            params.append(id)
+            
+            query = f"""
+                UPDATE produtos SET 
+                nome = ?, descricao = ?, preco_inteiro = ?, preco_meia = ?, 
+                ativo = ?, categoria_id = ?, quantidade_estoque = ?, unidade = ?
+                {foto_sql}
+                WHERE id = ?
+            """
+            
+            query_db(query, params)
+            print(f"Product {id} updated successfully.")
+            return jsonify({'message': 'Produto atualizado'})
+            
+        except Exception as e:
+            print(f"ERROR UPDATING PRODUCT {id}: {e}")
+            return jsonify({'error': str(e)}), 500
 
 @app.route('/api/admin/pedidos', methods=['GET'])
 def admin_pedidos():
