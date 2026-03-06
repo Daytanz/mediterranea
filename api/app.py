@@ -201,8 +201,8 @@ def init_db_schema():
             db.rollback()
 
 # Run schema init on startup
-with app.app_context():
-    init_db_schema()
+# with app.app_context():
+#    init_db_schema()
 
 # Fix CORS: Allow specific Netlify domain and localhost for dev
 # supports_credentials=True is crucial if we send cookies/auth headers
@@ -240,7 +240,17 @@ def home():
 def health_check():
     db_status = "ok"
     try:
-        query_db('SELECT 1')
+        # Use a simpler check that doesn't rely on helper functions if possible
+        # or wrap query_db in a very safe try/except
+        if DATABASE_URL:
+            # Manual simple check
+            conn = psycopg2.connect(DATABASE_URL.strip())
+            cur = conn.cursor()
+            cur.execute('SELECT 1')
+            cur.close()
+            conn.close()
+        else:
+            query_db('SELECT 1')
     except Exception as e:
         db_status = f"error: {str(e)}"
         
@@ -259,6 +269,14 @@ def health_check():
         "filesystem": fs_status,
         "upload_folder": app.config['UPLOAD_FOLDER']
     })
+
+@app.route('/api/init-db', methods=['GET'])
+def manual_init_db():
+    try:
+        init_db_schema()
+        return jsonify({"message": "Database initialized manually"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # --- EMERGENCY RESET ROUTE ---
 @app.route('/api/reset-admin-emergency', methods=['GET'])
