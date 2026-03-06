@@ -266,7 +266,6 @@ def reset_admin_emergency():
         db = get_db()
         
         # Hash for 'admin123' using scrypt explicitly to match werkzeug defaults
-        # N=32768, r=8, p=1 are standard defaults in werkzeug's generate_password_hash
         password_hash = generate_password_hash('admin123', method='scrypt')
         
         status_msg = []
