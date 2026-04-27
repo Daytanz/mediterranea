@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { getCategories, updateCategory } from '../../lib/api';
+import { getCategories, updateCategory, createCategory, deleteCategory } from '../../lib/api';
 import { Link } from 'react-router-dom';
-import { Edit2, Save, X } from 'lucide-react';
+import { Edit2, Save, X, Plus, Trash2 } from 'lucide-react';
 import ImageWithFallback from '../../components/ImageWithFallback';
 
 interface Category {
@@ -21,6 +21,8 @@ const Categories: React.FC = () => {
     foto: null as File | null
   });
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const [isCreating, setIsCreating] = useState(false);
 
   const fetchCategories = async () => {
     const data = await getCategories();
@@ -43,6 +45,14 @@ const Categories: React.FC = () => {
 
   const handleCancel = () => {
     setEditingId(null);
+    setIsCreating(false);
+    setFormData({ nome: '', descricao: '', foto: null });
+    setPreviewUrl(null);
+  };
+
+  const handleCreateNew = () => {
+    setIsCreating(true);
+    setEditingId(null);
     setFormData({ nome: '', descricao: '', foto: null });
     setPreviewUrl(null);
   };
@@ -55,7 +65,20 @@ const Categories: React.FC = () => {
     }
   };
 
-  const handleSave = async (id: number) => {
+  const handleDelete = async (id: number) => {
+    if (window.confirm('Tem certeza que deseja excluir esta categoria? Produtos associados ficarão sem categoria.')) {
+      try {
+        await deleteCategory(id);
+        fetchCategories();
+        alert('Categoria excluída!');
+      } catch (err) {
+        console.error(err);
+        alert('Erro ao excluir.');
+      }
+    }
+  };
+
+  const handleSave = async (id: number | null) => {
     try {
       const data = new FormData();
       data.append('nome', formData.nome);
@@ -64,13 +87,20 @@ const Categories: React.FC = () => {
         data.append('foto', formData.foto);
       }
 
-      await updateCategory(id, data);
-      setEditingId(null);
+      if (isCreating) {
+        await createCategory(data);
+        setIsCreating(false);
+        alert('Categoria criada com sucesso!');
+      } else if (id !== null) {
+        await updateCategory(id, data);
+        setEditingId(null);
+        alert('Categoria atualizada com sucesso!');
+      }
+      
       fetchCategories();
-      alert('Categoria atualizada com sucesso!');
     } catch (error) {
-      console.error("Error updating category:", error);
-      alert("Erro ao atualizar categoria. Tente novamente.");
+      console.error("Error saving category:", error);
+      alert("Erro ao salvar categoria. Tente novamente.");
     }
   };
 
@@ -82,6 +112,18 @@ const Categories: React.FC = () => {
       </div>
 
       <div className="p-4 max-w-4xl mx-auto space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-serif font-bold text-zinc-800">Categorias</h2>
+          {!isCreating && (
+            <button 
+              onClick={handleCreateNew}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors flex items-center gap-2"
+            >
+              <Plus size={20} /> Nova Categoria
+            </button>
+          )}
+        </div>
+
         <div className="bg-white rounded-xl shadow-sm border border-zinc-100 overflow-hidden">
           <table className="w-full text-left">
             <thead className="bg-zinc-50 border-b">
@@ -92,6 +134,61 @@ const Categories: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
+              {isCreating && (
+                <tr className="bg-blue-50/50">
+                  <td className="p-4 w-32 align-top">
+                    <div className="space-y-2">
+                      <div className="w-24 h-16 rounded-lg bg-zinc-100 overflow-hidden relative border border-zinc-200">
+                         <ImageWithFallback 
+                           src={previewUrl} 
+                           alt="Preview" 
+                           className="w-full h-full object-cover" 
+                         />
+                      </div>
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="text-xs w-full text-zinc-500 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                    </div>
+                  </td>
+                  <td className="p-4 align-top">
+                    <div className="space-y-3">
+                      <input
+                        type="text"
+                        value={formData.nome}
+                        onChange={(e) => setFormData({...formData, nome: e.target.value})}
+                        className="w-full border rounded p-2 font-bold text-zinc-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="Nome da Categoria"
+                      />
+                      <textarea
+                        value={formData.descricao}
+                        onChange={(e) => setFormData({...formData, descricao: e.target.value})}
+                        className="w-full border rounded p-2 text-sm text-zinc-600 focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="Descrição..."
+                        rows={2}
+                      />
+                    </div>
+                  </td>
+                  <td className="p-4 text-right align-top">
+                    <div className="flex flex-col gap-2 items-end">
+                      <button 
+                        onClick={() => handleSave(null)}
+                        className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 hover:bg-green-700 transition-colors"
+                      >
+                        <Save size={16} /> Salvar
+                      </button>
+                      <button 
+                        onClick={handleCancel}
+                        className="text-zinc-400 hover:text-zinc-600 px-3 py-1 text-sm flex items-center gap-1"
+                      >
+                        <X size={16} /> Cancelar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )}
               {categories.map((cat) => (
                 <tr key={cat.id} className="hover:bg-zinc-50/50 transition-colors">
                   <td className="p-4 w-32 align-top">
@@ -168,13 +265,22 @@ const Categories: React.FC = () => {
                         </button>
                       </div>
                     ) : (
-                      <button 
-                        onClick={() => handleEdit(cat)}
-                        className="text-blue-600 hover:text-blue-800 p-2 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Editar"
-                      >
-                        <Edit2 size={20} />
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        <button 
+                          onClick={() => handleEdit(cat)}
+                          className="text-blue-600 hover:text-blue-800 p-2 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Editar"
+                        >
+                          <Edit2 size={20} />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(cat.id)}
+                          className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Excluir"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>

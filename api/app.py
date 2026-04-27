@@ -217,6 +217,31 @@ def init_db_schema():
                 valor TEXT
             );
         """)
+        
+        # Eventos table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS eventos (
+                id SERIAL PRIMARY KEY,
+                titulo TEXT NOT NULL,
+                descricao TEXT,
+                data_hora TEXT NOT NULL,
+                foto_url TEXT,
+                ativo BOOLEAN DEFAULT TRUE
+            );
+        """)
+
+        # Reservas Evento table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS reservas_evento (
+                id SERIAL PRIMARY KEY,
+                evento_id INTEGER REFERENCES eventos(id) ON DELETE CASCADE,
+                nome_cliente TEXT NOT NULL,
+                telefone_cliente TEXT NOT NULL,
+                qtd_adultos INTEGER DEFAULT 0,
+                qtd_criancas INTEGER DEFAULT 0,
+                data_reserva TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
 
         # Ensure default admin exists
         cursor.execute("SELECT COUNT(*) FROM public.admin")
@@ -425,8 +450,65 @@ def get_categorias():
     cats = query_db('SELECT * FROM categorias ORDER BY id')
     return jsonify([dict(c) for c in cats])
 
-@app.route('/api/admin/categorias/<int:id>', methods=['PUT'])
+@app.route('/api/admin/categorias', methods=['POST'])
+def admin_create_categoria():
+    try:
+        data = request.form
+        file = request.files.get('foto')
+        
+        nome = data.get('nome')
+        descricao = data.get('descricao')
+        
+        foto_url = None
+        if file and allowed_file(file.filename):
+            foto_url = upload_image_to_supabase(file)
+            
+        db = get_db()
+        cursor = db.cursor()
+        
+        if DATABASE_URL:
+            cursor.execute(
+                "INSERT INTO categorias (nome, descricao, foto_url) VALUES (%s, %s, %s) RETURNING id",
+                (nome, descricao, foto_url)
+            )
+            new_id = cursor.fetchone()['id']
+        else:
+            cursor.execute(
+                "INSERT INTO categorias (nome, descricao, foto_url) VALUES (?, ?, ?)",
+                (nome, descricao, foto_url)
+            )
+            new_id = cursor.lastrowid
+            
+        db.commit()
+        return jsonify({'message': 'Categoria criada', 'id': new_id}), 201
+    except Exception as e:
+        print(f"Error creating category: {e}")
+        if 'db' in locals():
+            db.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/categorias/<int:id>', methods=['PUT', 'DELETE'])
 def update_categoria(id):
+    if request.method == 'DELETE':
+        try:
+            # Need to be careful if products are linked to this category
+            # Either set category_id to NULL in products or delete them.
+            # Assuming set to NULL for safety.
+            db = get_db()
+            cursor = db.cursor()
+            if DATABASE_URL:
+                cursor.execute("UPDATE produtos SET categoria_id = NULL WHERE categoria_id = %s", (id,))
+                cursor.execute("DELETE FROM categorias WHERE id = %s", (id,))
+            else:
+                cursor.execute("UPDATE produtos SET categoria_id = NULL WHERE categoria_id = ?", (id,))
+                cursor.execute("DELETE FROM categorias WHERE id = ?", (id,))
+            db.commit()
+            return jsonify({'message': 'Categoria deletada com sucesso'})
+        except Exception as e:
+            print(f"ERROR DELETING CATEGORY {id}: {e}")
+            return jsonify({'error': str(e)}), 500
+
+    # PUT
     try:
         print(f"UPDATING CATEGORY {id}...")
         data = request.form
@@ -885,6 +967,147 @@ def admin_config():
                 query_db('INSERT INTO configuracoes (chave, valor) VALUES (?, ?)', (key, val_str))
                 
         return jsonify({'message': 'Configurações atualizadas'})
+
+# --- EVENTS API ---
+
+@app.route('/api/eventos', methods=['GET'])
+def get_eventos_public():
+    eventos = query_db("SELECT * FROM eventos WHERE ativo = TRUE ORDER BY data_hora ASC")
+    return jsonify([dict(e) for e in eventos])
+
+@app.route('/api/eventos/<int:id>/reservar', methods=['POST'])
+def reservar_evento(id):
+    data = request.json
+    nome = data.get('nome_cliente')
+    telefone = data.get('telefone_cliente')
+    
+    try: adultos = int(data.get('qtd_adultos', 0))
+    except: adultos = 0
+    try: criancas = int(data.get('qtd_criancas', 0))
+    except: criancas = 0
+    
+    if not telefone or not nome:
+         return jsonify({'error': 'Nome e telefone são obrigatórios'}), 400
+         
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        if DATABASE_URL:
+            cursor.execute("""
+                INSERT INTO reservas_evento 
+                (evento_id, nome_cliente, telefone_cliente, qtd_adultos, qtd_criancas) 
+                VALUES (%s, %s, %s, %s, %s)
+            """, (id, nome, telefone, adultos, criancas))
+        else:
+            cursor.execute("""
+                INSERT INTO reservas_evento 
+                (evento_id, nome_cliente, telefone_cliente, qtd_adultos, qtd_criancas) 
+                VALUES (?, ?, ?, ?, ?)
+            """, (id, nome, telefone, adultos, criancas))
+        db.commit()
+        return jsonify({'message': 'Reserva confirmada com sucesso!'}), 201
+    except Exception as e:
+        print(f"ERROR RESERVING EVENT {id}: {e}")
+        if 'db' in locals(): db.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/eventos', methods=['GET', 'POST'])
+def admin_eventos():
+    if request.method == 'GET':
+        eventos = query_db("SELECT * FROM eventos ORDER BY data_hora ASC")
+        return jsonify([dict(e) for e in eventos])
+        
+    elif request.method == 'POST':
+        try:
+            data = request.form
+            file = request.files.get('foto')
+            foto_url = upload_image_to_supabase(file) if file and allowed_file(file.filename) else None
+            
+            ativo = str(data.get('ativo', 'true')).lower() in ['true', '1', 't', 'on']
+            titulo = data.get('titulo')
+            descricao = data.get('descricao')
+            data_hora = data.get('data_hora')
+            
+            db = get_db()
+            cursor = db.cursor()
+            if DATABASE_URL:
+                cursor.execute("""
+                    INSERT INTO eventos (titulo, descricao, data_hora, foto_url, ativo) 
+                    VALUES (%s, %s, %s, %s, %s) RETURNING id
+                """, (titulo, descricao, data_hora, foto_url, ativo))
+                new_id = cursor.fetchone()['id']
+            else:
+                cursor.execute("""
+                    INSERT INTO eventos (titulo, descricao, data_hora, foto_url, ativo) 
+                    VALUES (?, ?, ?, ?, ?)
+                """, (titulo, descricao, data_hora, foto_url, ativo))
+                new_id = cursor.lastrowid
+            db.commit()
+            return jsonify({'message': 'Evento criado', 'id': new_id}), 201
+        except Exception as e:
+            print(f"Error creating event: {e}")
+            if 'db' in locals(): db.rollback()
+            return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/eventos/<int:id>', methods=['PUT', 'DELETE'])
+def admin_evento_detail(id):
+    if request.method == 'DELETE':
+        try:
+            db = get_db()
+            cursor = db.cursor()
+            if DATABASE_URL:
+                # Due to ON DELETE CASCADE, deleting event deletes reservations. But we enforce it manually for SQLite just in case.
+                cursor.execute("DELETE FROM reservas_evento WHERE evento_id = %s", (id,))
+                cursor.execute("DELETE FROM eventos WHERE id = %s", (id,))
+            else:
+                cursor.execute("DELETE FROM reservas_evento WHERE evento_id = ?", (id,))
+                cursor.execute("DELETE FROM eventos WHERE id = ?", (id,))
+            db.commit()
+            return jsonify({'message': 'Evento deletado'})
+        except Exception as e:
+            if 'db' in locals(): db.rollback()
+            return jsonify({'error': str(e)}), 500
+            
+    elif request.method == 'PUT':
+        try:
+            data = request.form
+            file = request.files.get('foto')
+            
+            foto_sql = ""
+            titulo = data.get('titulo')
+            descricao = data.get('descricao')
+            data_hora = data.get('data_hora')
+            ativo = str(data.get('ativo', 'true')).lower() in ['true', '1', 't', 'on']
+            
+            params = [titulo, descricao, data_hora, ativo]
+            
+            if file and allowed_file(file.filename):
+                foto_url = upload_image_to_supabase(file)
+                if foto_url:
+                    foto_sql = ", foto_url = ?"
+                    params.append(foto_url)
+                    
+            params.append(id)
+            
+            query = f"""
+                UPDATE eventos SET 
+                titulo = ?, descricao = ?, data_hora = ?, ativo = ?
+                {foto_sql}
+                WHERE id = ?
+            """
+            query_db(query, params)
+            return jsonify({'message': 'Evento atualizado'})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/eventos/<int:id>/reservas', methods=['GET'])
+def admin_evento_reservas(id):
+    if DATABASE_URL:
+        reservas = query_db("SELECT * FROM reservas_evento WHERE evento_id = %s ORDER BY data_reserva DESC", (id,))
+    else:
+        reservas = query_db("SELECT * FROM reservas_evento WHERE evento_id = ? ORDER BY data_reserva DESC", (id,))
+    return jsonify([dict(r) for r in reservas])
+
 
 @app.route('/uploads/<path:filename>')
 def uploaded_file(filename):

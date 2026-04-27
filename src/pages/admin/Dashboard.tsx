@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getAdminDashboard } from '../../lib/api';
-import { LayoutDashboard, Package, ShoppingBag, Settings, LogOut, Grid } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Settings, LogOut, Grid, Calendar } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState({ total_orders: 0, today_orders: 0 });
@@ -58,6 +58,10 @@ const Dashboard: React.FC = () => {
           <Link to="/admin/categorias" className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow flex flex-col items-center gap-2">
             <Grid size={32} className="text-blue-600" />
             <span className="font-medium">Categorias</span>
+          </Link>
+          <Link to="/admin/eventos" className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow flex flex-col items-center gap-2">
+            <Calendar size={32} className="text-purple-600" />
+            <span className="font-medium">Eventos</span>
           </Link>
           <Link to="/admin/configuracoes" className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow flex flex-col items-center gap-2">
             <Settings size={32} className="text-zinc-600" />

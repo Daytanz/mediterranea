@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Calendar } from 'lucide-react';
 import { getCategories } from '../lib/api';
 import ImageWithFallback from '../components/ImageWithFallback';
 
@@ -90,6 +90,14 @@ const Home: React.FC = () => {
         ))}
       </div>
       
+      {/* Eventos Section Link */}
+      <div className="mt-12 text-center animate-fade-in delay-200">
+        <Link to="/eventos" className="inline-flex items-center gap-3 bg-wine text-white px-8 py-4 rounded-full font-bold shadow-lg hover:bg-terracotta hover:shadow-xl transition-all transform hover:-translate-y-1">
+          <Calendar size={24} />
+          Ver Nossos Eventos Especiais
+        </Link>
+      </div>
+
       <div className="mt-16 text-center animate-fade-in delay-300">
         <div className="inline-block p-4 border border-olive/20 rounded-lg bg-white/50 backdrop-blur-sm">
           <p className="text-olive text-sm font-serif italic">

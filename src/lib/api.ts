@@ -76,7 +76,54 @@ export const getCategories = async () => {
   return response.data;
 };
 
+export const createCategory = async (data: FormData) => {
+  const response = await api.post('/admin/categorias', data);
+  return response.data;
+};
+
 export const updateCategory = async (id: number, data: FormData) => {
   const response = await api.put(`/admin/categorias/${id}`, data);
+  return response.data;
+};
+
+export const deleteCategory = async (id: number) => {
+  const response = await api.delete(`/admin/categorias/${id}`);
+  return response.data;
+};
+
+// Events Public API
+export const getEventos = async () => {
+  const response = await api.get('/eventos');
+  return response.data;
+};
+
+export const reservarEvento = async (id: number, data: any) => {
+  const response = await api.post(`/eventos/${id}/reservar`, data);
+  return response.data;
+};
+
+// Events Admin API
+export const getAdminEventos = async () => {
+  const response = await api.get('/admin/eventos');
+  return response.data;
+};
+
+export const createAdminEvento = async (data: FormData) => {
+  const response = await api.post('/admin/eventos', data);
+  return response.data;
+};
+
+export const updateAdminEvento = async (id: number, data: FormData) => {
+  const response = await api.put(`/admin/eventos/${id}`, data);
+  return response.data;
+};
+
+export const deleteAdminEvento = async (id: number) => {
+  const response = await api.delete(`/admin/eventos/${id}`);
+  return response.data;
+};
+
+export const getAdminEventoReservas = async (id: number) => {
+  const response = await api.get(`/admin/eventos/${id}/reservas`);
   return response.data;
 };
