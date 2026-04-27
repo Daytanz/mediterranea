@@ -25,31 +25,40 @@ graph TD
 ```
 
 ## 2. Technology Description
-- Frontend: React@18 + tailwindcss@3 + vite
-- Initialization Tool: vite-init
-- Backend: Flask@2 + Python@3.9
-- Database: SQLite3
-- Dependências essenciais: axios, react-router-dom, flask-cors, werkzeug, pillow (image processing)
+
+* Frontend: React\@18 + tailwindcss\@3 + vite
+
+* Initialization Tool: vite-init
+
+* Backend: Flask\@2 + Python\@3.9
+
+* Database: SQLite3
+
+* Dependências essenciais: axios, react-router-dom, flask-cors, werkzeug, pillow (image processing)
 
 ## 3. Route definitions
-| Route | Purpose |
-|-------|---------|
-| / | Home page com cards de categorias |
-| /categoria/:nome | Lista produtos por categoria |
-| /carrinho | Visualizar e gerenciar pedido |
-| /admin | Login do painel administrativo |
-| /admin/dashboard | Dashboard administrativo |
-| /admin/produtos | Gerenciar produtos |
-| /admin/pedidos | Gerenciar pedidos |
-| /admin/configuracoes | Configurações do sistema |
+
+| Route                | Purpose                           |
+| -------------------- | --------------------------------- |
+| /                    | Home page com cards de categorias |
+| /categoria/:nome     | Lista produtos por categoria      |
+| /carrinho            | Visualizar e gerenciar pedido     |
+| /admin               | Login do painel administrativo    |
+| /admin/dashboard     | Dashboard administrativo          |
+| /admin/produtos      | Gerenciar produtos                |
+| /admin/pedidos       | Gerenciar pedidos                 |
+| /admin/configuracoes | Configurações do sistema          |
 
 ## 4. API definitions
 
 ### 4.1 Products API
+
 ```
 GET /api/produtos
 ```
+
 Response:
+
 ```json
 [
   {
@@ -67,10 +76,13 @@ Response:
 ```
 
 ### 4.2 Orders API
+
 ```
 POST /api/pedidos
 ```
+
 Request:
+
 ```json
 {
   "items": [
@@ -93,10 +105,13 @@ Request:
 ```
 
 ### 4.3 Admin Authentication
+
 ```
 POST /api/admin/login
 ```
+
 Request:
+
 ```json
 {
   "email": "admin@mediterranea.com",
@@ -129,6 +144,7 @@ graph TD
 ## 6. Data model
 
 ### 6.1 Data model definition
+
 ```mermaid
 erDiagram
   CATEGORIA {
@@ -286,3 +302,4 @@ INSERT INTO configuracoes (chave, valor, tipo) VALUES
 ('whatsapp_numero', '5511999999999', 'string'),
 ('preco_meia_regra', 'mais_cara', 'string');
 ```
+
