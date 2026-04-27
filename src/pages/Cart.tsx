@@ -9,6 +9,7 @@ const Cart: React.FC = () => {
   const { cart, removeFromCart, clearCart, updateQuantity } = useStore();
   const [shopStatus, setShopStatus] = useState<{ isOpen: boolean; message: string }>({ isOpen: true, message: '' });
   const [loadingStatus, setLoadingStatus] = useState(true);
+  const [whatsappNumber, setWhatsappNumber] = useState<string>('');
 
   useEffect(() => {
     const checkShopStatus = async () => {
@@ -18,6 +19,9 @@ const Cart: React.FC = () => {
         configs.forEach((c: any) => configMap[c.chave] = c.valor);
 
         const status = configMap['shop_status'] || 'auto';
+        const rawWhatsapp = configMap['whatsapp_numero'] || '';
+        const normalizedWhatsapp = rawWhatsapp.replace(/\D/g, '').replace(/^00/, '');
+        setWhatsappNumber(normalizedWhatsapp);
         
         if (status === 'open') {
           setShopStatus({ isOpen: true, message: '' });
@@ -80,6 +84,7 @@ const Cart: React.FC = () => {
         console.error(err);
         // Fallback to open in case of error to not block business
         setShopStatus({ isOpen: true, message: '' });
+        setWhatsappNumber('');
       } finally {
         setLoadingStatus(false);
       }
@@ -113,6 +118,12 @@ const Cart: React.FC = () => {
   const handleSendOrder = async () => {
     if (!validation.valid) return;
 
+    const targetWhatsapp = (whatsappNumber || '').trim();
+    if (!targetWhatsapp) {
+      alert('Número do WhatsApp não configurado. Configure em Admin > Configurações.');
+      return;
+    }
+
     const orderData = {
       items: cart.map(i => ({
         produto_id: i.product.id,
@@ -122,15 +133,14 @@ const Cart: React.FC = () => {
         preco_unitario: i.type === 'inteira' ? i.product.preco_inteiro : i.product.preco_meia
       })),
       total: total,
-      whatsapp: '5511999999999'
+      whatsapp: targetWhatsapp
     };
 
     try {
       await createOrder(orderData);
       
       const message = formatWhatsAppMessage();
-      const whatsappNumber = '5511999999999';
-      const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+      const url = `https://wa.me/${targetWhatsapp}?text=${encodeURIComponent(message)}`;
       window.open(url, '_blank');
       
       clearCart();
