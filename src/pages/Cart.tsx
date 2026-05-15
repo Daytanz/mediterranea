@@ -124,6 +124,10 @@ const Cart: React.FC = () => {
       return;
     }
 
+    const message = formatWhatsAppMessage();
+    const url = `https://api.whatsapp.com/send?phone=${targetWhatsapp}&text=${encodeURIComponent(message)}`;
+    const popup = window.open('about:blank', '_blank');
+
     const orderData = {
       items: cart.map(i => ({
         produto_id: i.product.id,
@@ -139,12 +143,15 @@ const Cart: React.FC = () => {
     try {
       await createOrder(orderData);
       
-      const message = formatWhatsAppMessage();
-      const url = `https://wa.me/${targetWhatsapp}?text=${encodeURIComponent(message)}`;
-      window.open(url, '_blank');
+      if (popup) {
+        popup.location.href = url;
+      } else {
+        window.location.href = url;
+      }
       
       clearCart();
     } catch (err) {
+      if (popup) popup.close();
       alert('Erro ao processar pedido. Tente novamente.');
       console.error(err);
     }
