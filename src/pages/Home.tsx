@@ -27,14 +27,13 @@ const Home: React.FC = () => {
   const [nextEvent, setNextEvent] = useState<Evento | null>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    let cancelled = false;
+
+    const fetchCategories = async () => {
+      const start = performance.now();
       try {
-        const [catsData, evtsData] = await Promise.all([
-          getCategories(),
-          getEventos()
-        ]);
+        const catsData = await getCategories();
         
-        // Map categories
         const mappedData = catsData.map((cat: any) => {
            let accent = 'bg-terracotta';
            if (cat.nome === 'Salames') accent = 'bg-wine';
@@ -49,18 +48,37 @@ const Home: React.FC = () => {
              accent: accent
            };
         });
-        setCategories(mappedData);
 
-        // Get next event (first active event returned by API)
-        if (evtsData && evtsData.length > 0) {
-          setNextEvent(evtsData[0]);
-        }
-
+        if (!cancelled) setCategories(mappedData);
       } catch (err) {
-        console.error("Failed to fetch data", err);
+        console.error("Failed to fetch categories", err);
+      } finally {
+        const elapsed = Math.round(performance.now() - start);
+        console.log('[timing] home /api/categorias ms=', elapsed);
       }
     };
-    fetchData();
+
+    const fetchEventos = async () => {
+      const start = performance.now();
+      try {
+        const evtsData = await getEventos();
+        if (!cancelled && evtsData && evtsData.length > 0) {
+          setNextEvent(evtsData[0]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch eventos", err);
+      } finally {
+        const elapsed = Math.round(performance.now() - start);
+        console.log('[timing] home /api/eventos ms=', elapsed);
+      }
+    };
+
+    fetchCategories();
+    fetchEventos();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (

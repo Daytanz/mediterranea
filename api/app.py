@@ -7,6 +7,7 @@ from flask_cors import CORS
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 import datetime
+import time
 from uuid import uuid4
 from supabase import create_client, Client
 
@@ -447,8 +448,15 @@ def reset_admin_emergency():
 
 @app.route('/api/categorias', methods=['GET'])
 def get_categorias():
-    cats = query_db('SELECT * FROM categorias ORDER BY id')
-    return jsonify([dict(c) for c in cats])
+    start = time.perf_counter()
+    cats = None
+    try:
+        cats = query_db('SELECT id, nome, descricao, foto_url FROM categorias ORDER BY id')
+        return jsonify([dict(c) for c in cats])
+    finally:
+        elapsed_ms = int((time.perf_counter() - start) * 1000)
+        rows = len(cats) if cats is not None else -1
+        print(f"[timing] GET /api/categorias ms={elapsed_ms} rows={rows}")
 
 @app.route('/api/admin/categorias', methods=['POST'])
 def admin_create_categoria():
@@ -552,22 +560,21 @@ def update_categoria(id):
 
 @app.route('/api/produtos', methods=['GET'])
 def get_produtos():
+    start = time.perf_counter()
+    produtos = None
     try:
-        # Usa una query base senza WHERE per vedere se almeno legge la tabella
-        produtos = query_db('SELECT * FROM produtos')
+        produtos = query_db("""
+            SELECT
+                id, nome, descricao, preco_inteiro, preco_meia,
+                foto_url, ativo, categoria_id, quantidade_estoque, unidade
+            FROM produtos
+            WHERE ativo IS TRUE
+        """)
         
         result = []
         for p in produtos:
             try:
                 p_dict = dict(p)
-                
-                # Check active status manually in python to be safer
-                ativo = p_dict.get('ativo')
-                # Accept: True, 1, '1', 'true', 't'
-                is_active = str(ativo).lower() in ['true', '1', 't', 'on'] if ativo is not None else False
-                
-                if not is_active:
-                    continue
                 
                 # Safe casting
                 if 'preco_inteiro' in p_dict:
@@ -587,6 +594,10 @@ def get_produtos():
     except Exception as e:
         print("ERRORE GET /produtos:", repr(e))
         return jsonify([]), 200
+    finally:
+        elapsed_ms = int((time.perf_counter() - start) * 1000)
+        rows = len(produtos) if produtos is not None else -1
+        print(f"[timing] GET /api/produtos ms={elapsed_ms} rows={rows}")
 
 @app.route('/api/pedidos', methods=['POST'])
 def create_pedido():
@@ -972,8 +983,15 @@ def admin_config():
 
 @app.route('/api/eventos', methods=['GET'])
 def get_eventos_public():
-    eventos = query_db("SELECT * FROM eventos WHERE ativo = TRUE ORDER BY data_hora ASC")
-    return jsonify([dict(e) for e in eventos])
+    start = time.perf_counter()
+    eventos = None
+    try:
+        eventos = query_db("SELECT * FROM eventos WHERE ativo = TRUE ORDER BY data_hora ASC")
+        return jsonify([dict(e) for e in eventos])
+    finally:
+        elapsed_ms = int((time.perf_counter() - start) * 1000)
+        rows = len(eventos) if eventos is not None else -1
+        print(f"[timing] GET /api/eventos ms={elapsed_ms} rows={rows}")
 
 @app.route('/api/eventos/<int:id>/reservar', methods=['POST'])
 def reservar_evento(id):
