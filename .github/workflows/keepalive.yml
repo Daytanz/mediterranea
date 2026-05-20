@@ -2,7 +2,7 @@ name: keepalive
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -11,4 +11,12 @@ jobs:
     steps:
       - name: Ping backend health
         run: |
-          curl -fsS --retry 3 --retry-delay 5 --max-time 20 https://mediterranea.onrender.com/api/health > /dev/null
+          set -e
+          echo "Ping /api/health"
+          curl -fsS --connect-timeout 10 --max-time 120 --retry 5 --retry-all-errors --retry-delay 5 \
+            -w "health_http=%{http_code} time_total=%{time_total}\n" \
+            https://mediterranea.onrender.com/api/health > /dev/null
+          echo "Ping /api/categorias"
+          curl -fsS --connect-timeout 10 --max-time 120 --retry 5 --retry-all-errors --retry-delay 5 \
+            -w "categorias_http=%{http_code} time_total=%{time_total}\n" \
+            https://mediterranea.onrender.com/api/categorias > /dev/null
